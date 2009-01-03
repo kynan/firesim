@@ -34,29 +34,22 @@ void LBM::run( double omega, int maxSteps ) {
   // loop over maxSteps time steps
   for ( int step = 0; step < maxSteps; ++step ) {
     // loop over all non-boundary cells
-    for ( int z = 1; z < grid0_->getSizeZ(); z++ ) {
-      for ( int y = 1; y < grid0_->getSizeY(); y++ ) {
-        for ( int x = 1; x < grid0_->getSizeX(); x++ ) {
+    for ( int z = 1; z < grid0_->getSizeZ() - 1; z++ ) {
+      for ( int y = 1; y < grid0_->getSizeY() - 1; y++ ) {
+        for ( int x = 1; x < grid0_->getSizeX() - 1; x++ ) {
 
-          // streaming step: stream distribution values from neighboring cells
-          // and calculate rho and u
+          // calculate rho and u
           double rho = (*grid0_)( x, y, z, 0 ); // df in center
           double ux = 0.;
           double uy = 0.;
           double uz = 0.;
-          // loop over all velocity directions
+          // loop over all velocity directions but center
           for ( int f = 1; f < dim; ++f ) {
-            double exi = ex[f];
-            double eyi = ey[f];
-            double ezi = ez[f];
-
-            double fi = (*grid0_)( x + exi, y + eyi, z + ezi, f );
+            double fi = (*grid0_)( x, y, z, f );
             rho += fi;
-            ux += exi * fi;
-            uy += eyi * fi;
-            uz += ezi * fi;
-
-            (*grid1_)( x, y, z, f ) = fi;
+            ux += ex[f] * fi;
+            uy += ey[f] * fi;
+            uz += ez[f] * fi;
           }
           rho_( x, y, z ) = rho;
           u_( x, y, z, 0 ) = ux;
@@ -64,17 +57,19 @@ void LBM::run( double omega, int maxSteps ) {
           u_( x, y, z, 2 ) = uz;
 
           // collision step: calculate equilibrium distribution values and
-          // perform collision
+          // perform collision (weighting with current distribution values)
+          // streaming step: stream distribution values to neighboring cells
           double fc = rho - 1.5 * ( ux * ux + uy * uy + uz * uz );
           double omegai = 1 - omega;
           // treat center value specially
           (*grid1_)( x, y, z, 0 ) = omegai * (*grid0_)( x, y, z, 0 )
                                 + omega *  w[0] * fc;
-          // loop over all velocity directions
+          // loop over all velocity directions but center
           for ( int f = 1; f < dim; ++f ) {
             double eiu = ex[f] * ux + ey[f] * uy + ez[f] * uz;
-            (*grid1_)( x, y, z, f ) = omegai * (*grid1_)( x, y, z, f )
-                                  + omega * ( fc +  3 * eiu + 4.5 * eiu * eiu);
+            (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
+              =   omegai * (*grid0_)( x, y, z, f )
+                + omega  * ( fc +  3 * eiu + 4.5 * eiu * eiu);
           }
         } // x
       } // y
