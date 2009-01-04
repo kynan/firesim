@@ -12,7 +12,7 @@
 
 namespace lbm {
 
-const int dim = 19;
+const int Dim = 19;
 
 typedef Grid<double,19> dfField;
 typedef Grid<double, 3> vField;
@@ -136,6 +136,12 @@ const double w[] = {
 const int ex[] = { 0, 0, 1, 0,-1, 0, 0, 1, 1,-1,-1, 0, 1, 0,-1, 0, 1, 0,-1 };
 const int ey[] = { 0, 1, 0,-1, 0, 0, 0, 1,-1,-1, 1, 1, 0,-1, 0, 1, 0,-1, 0 };
 const int ez[] = { 0, 0, 0, 0, 0, 1,-1, 0, 0, 0, 0, 1, 1, 1, 1,-1,-1,-1,-1 };
+
+//! Inversed lattice velocities
+//                  C, N, E, S, W, T, B,NE,SE,SW,NW,TN,TE,TS,TW,BN,BE,BS,BW
+const int erx[] = { 0, 0,-1, 0, 1, 0, 0,-1,-1, 1, 1, 0,-1, 0, 1, 0,-1, 0, 1 };
+const int ery[] = { 0,-1, 0, 1, 0, 0, 0,-1, 1, 1,-1,-1, 0, 1, 0,-1, 0, 1, 0 };
+const int erz[] = { 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0,-1,-1,-1,-1, 1, 1, 1, 1 };
 
 } // namespace lbm
 
