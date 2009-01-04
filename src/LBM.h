@@ -8,6 +8,8 @@
 #ifndef LBM_H_
 #define LBM_H_
 
+#include <string>
+
 #include "D3Q19.h"
 #include "Vec.h"
 
@@ -31,7 +33,7 @@ public:
 
   virtual ~LBM();
 
-  void run( double omega, int maxSteps );
+  void run( double omega, int maxSteps, int vtkStep, std::string vtkFileName );
 
 private:
 
@@ -43,6 +45,8 @@ private:
   inline void treatBoundary();
 
   inline void treatVelocities();
+
+  void writeVtkFile( int timestep, std::string vtkFileName );
 
   // Data members
   // ============

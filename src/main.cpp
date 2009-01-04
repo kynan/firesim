@@ -11,9 +11,9 @@
 
 int main ( int argc, char** argv ) {
 
-  int sizeX = 70;
-  int sizeY = 80;
-  int sizeZ = 90;
+  int sizeX = 7;
+  int sizeY = 8;
+  int sizeZ = 9;
 
   std::vector< Vec3<int> > bound;
   // Create boundary cells
@@ -25,20 +25,20 @@ int main ( int argc, char** argv ) {
   for ( int z = 2; z < sizeZ - 2; ++z )
     for ( int x = 1; x < sizeX - 1; ++ x ) {
       bound.push_back( Vec3<int>( x, 1, z ) );
-      bound.push_back( Vec3<int>( x, 38, z ) );
+      bound.push_back( Vec3<int>( x, sizeY - 2, z ) );
     }
   // Left and right side
   for ( int z = 2; z < sizeZ - 2; ++z )
     for ( int y = 2; y < sizeY - 2; ++y ) {
       bound.push_back( Vec3<int>( 1, y, z ) );
-      bound.push_back( Vec3<int>( 38, y, z ) );
+      bound.push_back( Vec3<int>( sizeX - 2, y, z ) );
     }
 
   std::vector< Vec3<int> > lid;
   // Create lid cells
   for ( int y = 1; y < sizeY - 1; ++y )
       for ( int x = 1; x < sizeX - 1; ++x )
-        bound.push_back( Vec3<int>( x, y, 38 ) );
+        bound.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
 
   std::vector< Vec3<double> > vel;
   // Create lid velocities
@@ -47,7 +47,7 @@ int main ( int argc, char** argv ) {
 
 
   lbm::LBM myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
-  myLBM.run( 1.9, 100 );
+  myLBM.run( 1.9, 100, 10, "vtk/example" );
 
   return EXIT_SUCCESS;
 }

@@ -5,6 +5,10 @@
  *      Author: Florian Rathgeber
  */
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include "LBM.h"
 
 namespace lbm {
@@ -23,7 +27,9 @@ LBM::LBM( int sizeX,
       grid1_( new dfField( sizeX, sizeY, sizeZ, 0. ) ),
       u_( sizeX, sizeY, sizeZ, 0. ),
       rho_( sizeX, sizeY, sizeZ, 1. ),
-      boundaryCells_( boundaryCells ) {}
+      boundaryCells_( boundaryCells ),
+      velocityCells_( velocityCells ),
+      velocities_( velocities ) {}
 
 LBM::~LBM() {
   assert ( grid0_ != 0 && grid1_ != 0 );
@@ -33,10 +39,13 @@ LBM::~LBM() {
 
 // Set methods
 
-void LBM::run( double omega, int maxSteps ) {
+void LBM::run( double omega, int maxSteps, int vtkStep, std::string vtkFileName ) {
 
   // loop over maxSteps time steps
   for ( int step = 0; step < maxSteps; ++step ) {
+
+    std::cout << "Time step " << step << " of " << maxSteps << std::endl;
+
     // loop over all cells but the ghost layer
     for ( int z = 1; z < grid0_->getSizeZ() - 1; z++ ) {
       for ( int y = 1; y < grid0_->getSizeY() - 1; y++ ) {
@@ -48,18 +57,21 @@ void LBM::run( double omega, int maxSteps ) {
         } // x
       } // y
     } // z
+
+    // Treat no-slip boundary conditions (walls)
+    treatBoundary();
+
+    // Treat velocity cells
+    treatVelocities();
+
+    // exchange grids for current and previous time step
+    dfField *gridTmp = grid0_;
+    grid0_ = grid1_;
+    grid1_ = gridTmp;
+
+    if ( step % vtkStep == 0 ) writeVtkFile( step, vtkFileName );
+
   } // step
-
-  // Treat no-slip boundary conditions (walls)
-  treatBoundary();
-
-  // Treat velocity cells
-  treatVelocities();
-
-  // exchange grids for current and previous time step
-  dfField *gridTmp = grid0_;
-  grid0_ = grid1_;
-  grid1_ = gridTmp;
 }
 
 // Internal helper functions
@@ -145,6 +157,72 @@ inline void LBM::treatVelocities() {
           - rho * w[i] * ( ex[i] * ux + ey[i] * uy + ez[i] * uz );
     }
   }
+}
+
+void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
+
+  for ( int z = 0; z < rho_.getSizeZ(); ++z ) {
+    for ( int y = 0; y < rho_.getSizeY(); ++y ) {
+      for ( int x = 0; x < rho_.getSizeX(); ++x ) {
+        std::cout << rho_(x,y,z) << " ";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+
+  // Open file for writing
+  std::ostringstream oss;
+  oss << vtkFileName << timestep << ".vtk";
+  std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
+  std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
+
+  // get size of domain without ghost layers
+  int sizeX = grid0_->getSizeX() - 2;
+  int sizeY = grid0_->getSizeY() - 2;
+  int sizeZ = grid0_->getSizeZ() - 2;
+
+  // Write file header
+  vtkFile << "# vtk DataFile Version 2.0\n";
+  vtkFile << "VTK output file for time step " << timestep << "\n\n";
+  //vtkFile << "BINARY\n\n";
+  vtkFile << "ASCII\n\n";
+  vtkFile << "DATASET STRUCTURED_POINTS\n";
+  vtkFile << "DIMENSIONS " << sizeX << " " << sizeY << " " << sizeZ << "\n";
+  vtkFile << "ORIGIN 0.0 0.0 0.0\n";
+  vtkFile << "SPACING 1.0 1.0 1.0\n\n";
+  vtkFile << "POINT_DATA " << sizeX * sizeY * sizeZ << "\n\n";
+
+  // Write density field
+  vtkFile << "SCALARS density double\n";
+  vtkFile << "LOOKUP_TABLE default\n";
+  //vtkFile.setf( std::ios::binary | std::ios::out );
+  for ( int z = 1; z <= sizeZ; ++z ) {
+    for ( int y = 1; y <= sizeY; ++y ) {
+      for ( int x = 1; x <= sizeX; ++x ) {
+        //vtkFile.write( reinterpret_cast<char *>( &rho_( x, y, z ) ), sizeof(double) );
+        vtkFile << rho_( x, y, z ) << "\n";
+      }
+    }
+  }
+  //vtkFile.setf( std::ios::out );
+
+  // Write velocity vector field
+  vtkFile << "VECTORS velocity double\n";
+  //vtkFile.setf( std::ios::binary | std::ios::out );
+  for ( int z = 1; z <= sizeZ; ++z ) {
+    for ( int y = 1; y <= sizeY; ++y ) {
+      for ( int x = 1; x <= sizeX; ++x ) {
+//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 0 ) ), sizeof(double) );
+//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 1 ) ), sizeof(double) );
+//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 2 ) ), sizeof(double) );
+        vtkFile << u_( x, y, z, 0 ) << " ";
+        vtkFile << u_( x, y, z, 1 ) << " ";
+        vtkFile << u_( x, y, z, 2 ) << "\n";
+      }
+    }
+  }
+
 }
 
 } // namespace lbm
