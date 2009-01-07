@@ -44,35 +44,6 @@ LBM::LBM( int sizeX,
         for ( int i = 0; i < Dim; ++i )
           (*grid1_)( x, y, z, i ) = w[i];
 
-//  // DEBUG output distribution functions grid0
-//  std::cout << "distribution functions grid0 after initialization\n";
-//  for ( int z = 0; z < u_.getSizeZ(); ++z ) {
-//    for ( int y = 0; y < u_.getSizeY(); ++y ) {
-//      for ( int x = 0; x < u_.getSizeX(); ++x ) {
-//        std::cout << "(";
-//        for ( int i = 0; i < Dim; ++i )
-//          std::cout << (*grid0_)(x,y,z,i) << " ";
-//        std::cout << ") ";
-//      }
-//      std::cout << "\n";
-//    }
-//    std::cout << "\n";
-//  }
-//
-//  // DEBUG output distribution functions grid1
-//  std::cout << "distribution functions grid1 after initialization\n";
-//  for ( int z = 0; z < u_.getSizeZ(); ++z ) {
-//    for ( int y = 0; y < u_.getSizeY(); ++y ) {
-//      for ( int x = 0; x < u_.getSizeX(); ++x ) {
-//        std::cout << "(";
-//        for ( int i = 0; i < Dim; ++i )
-//          std::cout << (*grid1_)(x,y,z,i) << " ";
-//        std::cout << ") ";
-//      }
-//      std::cout << "\n";
-//    }
-//    std::cout << "\n";
-//  }
 }
 
 LBM::~LBM() {
@@ -112,60 +83,6 @@ void LBM::run( double omega, int maxSteps, int vtkStep, std::string vtkFileName 
     dfField *gridTmp = grid0_;
     grid0_ = grid1_;
     grid1_ = gridTmp;
-
-//    // DEBUG output distribution functions grid0
-//    std::cout << "distribution functions grid0 timestep " << step << "\n";
-//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
-//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
-//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
-//          std::cout << "(";
-//          for ( int i = 0; i < Dim; ++i )
-//            std::cout << (*grid0_)(x,y,z,i) << " ";
-//          std::cout << ") ";
-//        }
-//        std::cout << "\n";
-//      }
-//      std::cout << "\n";
-//    }
-//
-//    // DEBUG output distribution functions grid1
-//    std::cout << "distribution functions grid1 timestep " << step << "\n";
-//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
-//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
-//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
-//          std::cout << "(";
-//          for ( int i = 0; i < Dim; ++i )
-//            std::cout << (*grid1_)(x,y,z,i) << " ";
-//          std::cout << ") ";
-//        }
-//        std::cout << "\n";
-//      }
-//      std::cout << "\n";
-//    }
-//
-//    // DEBUG output density field
-//    std::cout << "density field timestep " << step << "\n";
-//    for ( int z = 1; z < rho_.getSizeZ() - 1; ++z ) {
-//      for ( int y = 1; y < rho_.getSizeY() - 1; ++y ) {
-//        for ( int x = 1; x < rho_.getSizeX() - 1; ++x ) {
-//          std::cout << rho_(x,y,z) << " ";
-//        }
-//        std::cout << "\n";
-//      }
-//      std::cout << "\n";
-//    }
-//
-//    // DEBUG output velocity field
-//    std::cout << "velocity field timestep " << step << "\n";
-//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
-//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
-//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
-//          std::cout << "(" << u_(x,y,z,0) << " " << u_(x,y,z,1) << " " << u_(x,y,z,2) << ") ";
-//        }
-//        std::cout << "\n";
-//      }
-//      std::cout << "\n";
-//    }
 
     if ( step % vtkStep == 0 ) writeVtkFile( step, vtkFileName );
 
@@ -227,9 +144,6 @@ inline void LBM::treatBoundary() {
     int y = (*iter)[1];
     int z = (*iter)[2];
 
-    // DEBUG output
-//    std::cout << "Treat boundary cell (" << x << "," << y << "," << z << ")\n";
-
     // Go over all distribution values and stream to inverse distribution
     // value of adjacent cell in inverse direction (bounce back)
     for ( int i = 1; i < Dim; ++i ) {
@@ -258,10 +172,6 @@ inline void LBM::treatVelocities() {
     u_( x, y, z, 1 ) = uy;
     u_( x, y, z, 2 ) = uz;
 
-    // debug output
-//    std::cout << "Treat velocity cell (" << x << "," << y << "," << z << ")";
-//    std::cout << " with velocity (" << ux << "," << uy << "," << uz << ")\n";
-
     // Go over all distribution values, stream to inverse distribution value of
     // adjacent cell in inverse direction (bounce back) and modify by velocity
     // of moving wall
@@ -280,7 +190,7 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   std::ostringstream oss;
   oss << vtkFileName << "." << timestep << ".vtk";
   std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
-  std::ofstream vtkFile( oss.str().c_str() );//, std::ios::binary | std::ios::out );
+  std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
 
   // get size of domain without ghost layers
   int sizeX = grid0_->getSizeX() - 2;
@@ -290,8 +200,8 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   // Write file header
   vtkFile << "# vtk DataFile Version 2.0\n";
   vtkFile << "VTK output file for time step " << timestep << "\n\n";
-  //vtkFile << "BINARY\n\n";
-  vtkFile << "ASCII\n\n";
+  vtkFile << "BINARY\n\n";
+//  vtkFile << "ASCII\n\n";
   vtkFile << "DATASET STRUCTURED_POINTS\n";
   vtkFile << "DIMENSIONS " << sizeX << " " << sizeY << " " << sizeZ << "\n";
   vtkFile << "ORIGIN 0.0 0.0 0.0\n";
@@ -304,8 +214,8 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {
-        //vtkFile.write( reinterpret_cast<char *>( &rho_( x, y, z ) ), sizeof(double) );
-        vtkFile << rho_( x, y, z ) << "\n";
+        vtkFile.write( reinterpret_cast<char *>( &rho_( x, y, z ) ), sizeof(double) );
+//        vtkFile << rho_( x, y, z ) << "\n";
       }
     }
   }
@@ -315,12 +225,12 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {
-//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 0 ) ), sizeof(double) );
-//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 1 ) ), sizeof(double) );
-//        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 2 ) ), sizeof(double) );
-        vtkFile << u_( x, y, z, 0 ) << " ";
-        vtkFile << u_( x, y, z, 1 ) << " ";
-        vtkFile << u_( x, y, z, 2 ) << "\n";
+        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 0 ) ), sizeof(double) );
+        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 1 ) ), sizeof(double) );
+        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 2 ) ), sizeof(double) );
+//        vtkFile << u_( x, y, z, 0 ) << " ";
+//        vtkFile << u_( x, y, z, 1 ) << " ";
+//        vtkFile << u_( x, y, z, 2 ) << "\n";
       }
     }
   }
