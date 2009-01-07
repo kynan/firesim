@@ -54,7 +54,18 @@ LBM::~LBM() {
 
 // Set methods
 
-void LBM::run( double omega, int maxSteps, int vtkStep, std::string vtkFileName ) {
+void LBM::run( double omega,
+               double cSmagorinsky,
+               int maxSteps,
+               int vtkStep,
+               std::string vtkFileName ) {
+
+  // relaxation parameter
+  double tau = 1. / omega;
+  // lattice viscosity
+  double nu = ( 2. * tau - 1. ) * (1./6.);
+  // squared Smagorinsky constant
+  double cSqr = cSmagorinsky * cSmagorinsky;
 
   // loop over maxSteps time steps
   for ( int step = 0; step < maxSteps; ++step ) {
@@ -67,7 +78,10 @@ void LBM::run( double omega, int maxSteps, int vtkStep, std::string vtkFileName 
         for ( int x = 1; x < grid0_->getSizeX() - 1; x++ ) {
 
           // Perform actual collision and streaming step
-          collideStream( x, y, z, omega );
+//          collideStream( x, y, z, omega );
+          // Perform collision and streaming step with Smagorinsky turbulence
+          // correction
+          collideStreamSmagorinsky( x, y, z, nu, cSqr );
 
         } // x
       } // y
@@ -130,6 +144,90 @@ inline void LBM::collideStream( int x, int y, int z, double omega ) {
     (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
       =   omegai * (*grid0_)( x, y, z, f )
         + omega  * w[f] * ( fc +  3 * eiu + 4.5 * eiu * eiu);
+  }
+}
+
+inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, double cSqr ) {
+
+  // calculate rho and u
+  double rho = (*grid0_)( x, y, z, 0 ); // df in center
+  double ux = 0.;
+  double uy = 0.;
+  double uz = 0.;
+  // loop over all velocity directions but center
+  for ( int f = 1; f < Dim; ++f ) {
+    double fi = (*grid0_)( x, y, z, f );
+    rho += fi;
+    ux += ex[f] * fi;
+    uy += ey[f] * fi;
+    uz += ez[f] * fi;
+  }
+  // DEBUG assertions
+  assert ( rho > 0.8 && rho < 1.2 );
+  assert ( fabs(ux) < 2. );
+  assert ( fabs(uy) < 2. );
+  assert ( fabs(uz) < 2. );
+  rho_( x, y, z ) = rho;
+  u_( x, y, z, 0 ) = ux;
+  u_( x, y, z, 1 ) = uy;
+  u_( x, y, z, 2 ) = uz;
+
+  // collision step: calculate equilibrium distribution values and
+  // perform collision (weighting with current distribution values)
+  // streaming step: stream distribution values to neighboring cells
+  double fc = rho - 1.5 * ( ux * ux + uy * uy + uz * uz );
+  double feq[19];
+
+  // calculate equilibrium distribution functions
+  feq[0]  = (1./3.)  *   fc; // C
+  feq[1]  = (1./18.) * ( fc + 3 *   uy        + 4.5 *   uy        *   uy ); // N
+  feq[2]  = (1./18.) * ( fc + 3 *   ux        + 4.5 *   ux        *   ux ); // E
+  feq[3]  = (1./18.) * ( fc - 3 *   uy        + 4.5 *   uy        *   uy ); // S
+  feq[4]  = (1./18.) * ( fc - 3 *   ux        + 4.5 *   ux        *   ux ); // W
+  feq[5]  = (1./18.) * ( fc + 3 *   uz        + 4.5 *   uz        *   uz ); // T
+  feq[6]  = (1./18.) * ( fc - 3 *   uz        + 4.5 *   uz        *   uz ); // B
+  feq[7]  = (1./36.) * ( fc + 3 * ( ux + uy ) + 4.5 * ( ux + uy ) * ( ux + uy ) ); // NE
+  feq[8]  = (1./36.) * ( fc + 3 * ( ux - uy ) + 4.5 * ( ux - uy ) * ( ux - uy ) ); // SE
+  feq[9]  = (1./36.) * ( fc - 3 * ( ux + uy ) + 4.5 * ( ux + uy ) * ( ux + uy ) ); // SW
+  feq[10] = (1./36.) * ( fc - 3 * ( ux - uy ) + 4.5 * ( ux - uy ) * ( ux - uy ) ); // NW
+  feq[11] = (1./36.) * ( fc + 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // TN
+  feq[12] = (1./36.) * ( fc + 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // TE
+  feq[13] = (1./36.) * ( fc - 3 * ( uy - uz ) + 4.5 * ( uy - uz ) * ( uy - uz ) ); // TS
+  feq[14] = (1./36.) * ( fc - 3 * ( ux - uz ) + 4.5 * ( ux - uz ) * ( ux - uz ) ); // TW
+  feq[15] = (1./36.) * ( fc + 3 * ( uy - uz ) + 4.5 * ( uy - uz ) * ( uy - uz ) ); // BN
+  feq[16] = (1./36.) * ( fc + 3 * ( ux - uz ) + 4.5 * ( ux - uz ) * ( ux - uz ) ); // BE
+  feq[17] = (1./36.) * ( fc - 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // BS
+  feq[18] = (1./36.) * ( fc - 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // BW
+
+  // calculate non-equilibrium stress tensor
+  double qo = 0.;
+  for ( int i = 0; i < 3; ++i ) {
+    double qadd = 0.;
+    for ( int f = 1; f < 19; ++f ) {
+      qadd += ep[i][f] * ( (*grid0_)( x, y, z, f ) - feq[f] );
+    }
+    qo += qadd * qadd;
+  }
+  qo *= 2.;
+  for ( int i = 4; i < 6; ++i ) {
+    double qadd = 0.;
+    for ( int f = 7; f < 19; ++f ) {
+      qadd += ep[i][f] * ( (*grid0_)( x, y, z, f ) - feq[f] );
+    }
+    qo += qadd * qadd;
+  }
+  qo = sqrt( qo );
+
+  // Calculate local stress tensor
+  double s = ( sqrt( nu * nu + 18. * cSqr * qo ) - nu ) / ( 6. * cSqr);
+  double omega = 1. / ( 3. * ( nu + cSqr * s ) + .5 );
+  double omegai = 1 - omega;
+
+  // loop over all velocity directions and stream collided distribution value
+  // to neighboring cells
+  for ( int f = 0; f < Dim; ++f ) {
+    (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
+      =   omegai * (*grid0_)( x, y, z, f ) + omega * feq[f];
   }
 }
 

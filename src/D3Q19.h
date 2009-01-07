@@ -42,7 +42,7 @@ enum Direction {
 };
 
 //! Inverse lattice directions for numerals 0 - 18
-const int finv[] = {
+const int finv[19] = {
     0,  // C   0 -> C
     3,  // N   1 -> S
     4,  // E   2 -> W
@@ -65,7 +65,7 @@ const int finv[] = {
 };
 
 //! Corresponding Direction value for the numerals 0 - 18
-const Direction fd[] = {
+const Direction fd[19] = {
   C,
   N,
   E,
@@ -88,7 +88,7 @@ const Direction fd[] = {
 };
 
 //! Inverse Direction values for numerals 0 - 18
-const Direction fdinv[] = {
+const Direction fdinv[19] = {
     C,
     S,
     W,
@@ -110,7 +110,7 @@ const Direction fdinv[] = {
 };
 
 //! Weights of the distribution values for collision
-const double w[] = {
+const double w[19] = {
     1. / 3.,
     1. / 18.,
     1. / 18.,
@@ -134,9 +134,20 @@ const double w[] = {
 
 //! Lattice velocities
 //                 C, N, E, S, W, T, B,NE,SE,SW,NW,TN,TE,TS,TW,BN,BE,BS,BW
-const int ex[] = { 0, 0, 1, 0,-1, 0, 0, 1, 1,-1,-1, 0, 1, 0,-1, 0, 1, 0,-1 };
-const int ey[] = { 0, 1, 0,-1, 0, 0, 0, 1,-1,-1, 1, 1, 0,-1, 0, 1, 0,-1, 0 };
-const int ez[] = { 0, 0, 0, 0, 0, 1,-1, 0, 0, 0, 0, 1, 1, 1, 1,-1,-1,-1,-1 };
+const int ex[19] = { 0, 0, 1, 0,-1, 0, 0, 1, 1,-1,-1, 0, 1, 0,-1, 0, 1, 0,-1 };
+const int ey[19] = { 0, 1, 0,-1, 0, 0, 0, 1,-1,-1, 1, 1, 0,-1, 0, 1, 0,-1, 0 };
+const int ez[19] = { 0, 0, 0, 0, 0, 1,-1, 0, 0, 0, 0, 1, 1, 1, 1,-1,-1,-1,-1 };
+
+//! Products of lattice velocities
+const int ep[6][19] = {
+//    C, N, E, S, W, T, B,NE,SE,SW,NW,TN,TE,TS,TW,BN,BE,BS,BW
+    { 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1 }, // ex * ex
+    { 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0 }, // ey * ey
+    { 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1 }, // ez * ez
+    { 0, 0, 0, 0, 0, 0, 0, 1,-1, 1,-1, 0, 0, 0, 0, 0, 0, 0, 0 }, // ex * ey
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,-1, 0,-1, 0, 1 }, // ex * ez
+    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,-1, 0,-1, 0, 1, 0 }  // ey * ez
+};
 
 } // namespace lbm
 

@@ -33,7 +33,11 @@ public:
 
   virtual ~LBM();
 
-  void run( double omega, int maxSteps, int vtkStep, std::string vtkFileName );
+  void run( double omega,
+            double cSmagorinsky,
+            int maxSteps,
+            int vtkStep,
+            std::string vtkFileName );
 
 private:
 
@@ -41,6 +45,8 @@ private:
   // =========================
 
   inline void collideStream( int x, int y, int z, double omega );
+
+  inline void collideStreamSmagorinsky( int x, int y, int z, double nu, double cSqr );
 
   inline void treatBoundary();
 
