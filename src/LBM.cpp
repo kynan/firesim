@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 #include "LBM.h"
 
@@ -23,13 +24,56 @@ LBM::LBM( int sizeX,
           std::vector< Vec3<int> > &boundaryCells,
           std::vector< Vec3<int> > &velocityCells,
           std::vector< Vec3<double> > &velocities )
-    : grid0_( new dfField( sizeX, sizeY, sizeZ, 0. ) ),
-      grid1_( new dfField( sizeX, sizeY, sizeZ, 0. ) ),
+    : grid0_( new dfField( sizeX, sizeY, sizeZ ) ),
+      grid1_( new dfField( sizeX, sizeY, sizeZ ) ),
       u_( sizeX, sizeY, sizeZ, 0. ),
       rho_( sizeX, sizeY, sizeZ, 1. ),
       boundaryCells_( boundaryCells ),
       velocityCells_( velocityCells ),
-      velocities_( velocities ) {}
+      velocities_( velocities ) {
+
+  // initialize distribution functions with equilibrium
+  for ( int z = 0; z < sizeZ; ++z )
+    for ( int y = 0; y < sizeY; ++y )
+      for ( int x = 0; x < sizeX; ++x )
+        for ( int i = 0; i < Dim; ++i )
+          (*grid0_)( x, y, z, i ) = w[i];
+  for ( int z = 0; z < sizeZ; ++z )
+    for ( int y = 0; y < sizeY; ++y )
+      for ( int x = 0; x < sizeX; ++x )
+        for ( int i = 0; i < Dim; ++i )
+          (*grid1_)( x, y, z, i ) = w[i];
+
+//  // DEBUG output distribution functions grid0
+//  std::cout << "distribution functions grid0 after initialization\n";
+//  for ( int z = 0; z < u_.getSizeZ(); ++z ) {
+//    for ( int y = 0; y < u_.getSizeY(); ++y ) {
+//      for ( int x = 0; x < u_.getSizeX(); ++x ) {
+//        std::cout << "(";
+//        for ( int i = 0; i < Dim; ++i )
+//          std::cout << (*grid0_)(x,y,z,i) << " ";
+//        std::cout << ") ";
+//      }
+//      std::cout << "\n";
+//    }
+//    std::cout << "\n";
+//  }
+//
+//  // DEBUG output distribution functions grid1
+//  std::cout << "distribution functions grid1 after initialization\n";
+//  for ( int z = 0; z < u_.getSizeZ(); ++z ) {
+//    for ( int y = 0; y < u_.getSizeY(); ++y ) {
+//      for ( int x = 0; x < u_.getSizeX(); ++x ) {
+//        std::cout << "(";
+//        for ( int i = 0; i < Dim; ++i )
+//          std::cout << (*grid1_)(x,y,z,i) << " ";
+//        std::cout << ") ";
+//      }
+//      std::cout << "\n";
+//    }
+//    std::cout << "\n";
+//  }
+}
 
 LBM::~LBM() {
   assert ( grid0_ != 0 && grid1_ != 0 );
@@ -69,6 +113,60 @@ void LBM::run( double omega, int maxSteps, int vtkStep, std::string vtkFileName 
     grid0_ = grid1_;
     grid1_ = gridTmp;
 
+//    // DEBUG output distribution functions grid0
+//    std::cout << "distribution functions grid0 timestep " << step << "\n";
+//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
+//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
+//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
+//          std::cout << "(";
+//          for ( int i = 0; i < Dim; ++i )
+//            std::cout << (*grid0_)(x,y,z,i) << " ";
+//          std::cout << ") ";
+//        }
+//        std::cout << "\n";
+//      }
+//      std::cout << "\n";
+//    }
+//
+//    // DEBUG output distribution functions grid1
+//    std::cout << "distribution functions grid1 timestep " << step << "\n";
+//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
+//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
+//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
+//          std::cout << "(";
+//          for ( int i = 0; i < Dim; ++i )
+//            std::cout << (*grid1_)(x,y,z,i) << " ";
+//          std::cout << ") ";
+//        }
+//        std::cout << "\n";
+//      }
+//      std::cout << "\n";
+//    }
+//
+//    // DEBUG output density field
+//    std::cout << "density field timestep " << step << "\n";
+//    for ( int z = 1; z < rho_.getSizeZ() - 1; ++z ) {
+//      for ( int y = 1; y < rho_.getSizeY() - 1; ++y ) {
+//        for ( int x = 1; x < rho_.getSizeX() - 1; ++x ) {
+//          std::cout << rho_(x,y,z) << " ";
+//        }
+//        std::cout << "\n";
+//      }
+//      std::cout << "\n";
+//    }
+//
+//    // DEBUG output velocity field
+//    std::cout << "velocity field timestep " << step << "\n";
+//    for ( int z = 1; z < u_.getSizeZ() - 1; ++z ) {
+//      for ( int y = 1; y < u_.getSizeY() - 1; ++y ) {
+//        for ( int x = 1; x < u_.getSizeX() - 1; ++x ) {
+//          std::cout << "(" << u_(x,y,z,0) << " " << u_(x,y,z,1) << " " << u_(x,y,z,2) << ") ";
+//        }
+//        std::cout << "\n";
+//      }
+//      std::cout << "\n";
+//    }
+
     if ( step % vtkStep == 0 ) writeVtkFile( step, vtkFileName );
 
   } // step
@@ -91,6 +189,11 @@ inline void LBM::collideStream( int x, int y, int z, double omega ) {
     uy += ey[f] * fi;
     uz += ez[f] * fi;
   }
+  // DEBUG assertions
+  assert ( rho > 0.8 && rho < 1.2 );
+  assert ( fabs(ux) < 2. );
+  assert ( fabs(uy) < 2. );
+  assert ( fabs(uz) < 2. );
   rho_( x, y, z ) = rho;
   u_( x, y, z, 0 ) = ux;
   u_( x, y, z, 1 ) = uy;
@@ -109,7 +212,7 @@ inline void LBM::collideStream( int x, int y, int z, double omega ) {
     double eiu = ex[f] * ux + ey[f] * uy + ez[f] * uz;
     (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
       =   omegai * (*grid0_)( x, y, z, f )
-        + omega  * ( fc +  3 * eiu + 4.5 * eiu * eiu);
+        + omega  * w[f] * ( fc +  3 * eiu + 4.5 * eiu * eiu);
   }
 }
 
@@ -124,10 +227,13 @@ inline void LBM::treatBoundary() {
     int y = (*iter)[1];
     int z = (*iter)[2];
 
+    // DEBUG output
+//    std::cout << "Treat boundary cell (" << x << "," << y << "," << z << ")\n";
+
     // Go over all distribution values and stream to inverse distribution
     // value of adjacent cell in inverse direction (bounce back)
     for ( int i = 1; i < Dim; ++i ) {
-      (*grid1_)( x + erx[i], y + erx[i], z + erx[i], finv[i] ) = (*grid1_)( x, y, z, i );
+      (*grid1_)( x - ex[i], y - ey[i], z - ez[i], finv[i] ) = (*grid1_)( x, y, z, i );
     }
   }
 }
@@ -147,35 +253,34 @@ inline void LBM::treatVelocities() {
     double uz = velocities_[i][2];
     // Fetch density of current cell
     double rho = 6 * rho_( x, y, z );
+    // Set velocity of this cell
+    u_( x, y, z, 0 ) = ux;
+    u_( x, y, z, 1 ) = uy;
+    u_( x, y, z, 2 ) = uz;
+
+    // debug output
+//    std::cout << "Treat velocity cell (" << x << "," << y << "," << z << ")";
+//    std::cout << " with velocity (" << ux << "," << uy << "," << uz << ")\n";
 
     // Go over all distribution values, stream to inverse distribution value of
     // adjacent cell in inverse direction (bounce back) and modify by velocity
     // of moving wall
     for ( int i = 1; i < Dim; ++i ) {
-      (*grid1_)( x + erx[i], y + erx[i], z + erx[i], finv[i] )
+      int op = finv[i];
+      (*grid1_)( x - ex[i], y - ey[i], z - ez[i], op )
         = (*grid1_)( x, y, z, i )
-          - rho * w[i] * ( ex[i] * ux + ey[i] * uy + ez[i] * uz );
+          + rho * w[i] * ( ex[op] * ux + ey[op] * uy + ez[op] * uz );
     }
   }
 }
 
 void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
 
-  for ( int z = 0; z < rho_.getSizeZ(); ++z ) {
-    for ( int y = 0; y < rho_.getSizeY(); ++y ) {
-      for ( int x = 0; x < rho_.getSizeX(); ++x ) {
-        std::cout << rho_(x,y,z) << " ";
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
-  }
-
   // Open file for writing
   std::ostringstream oss;
-  oss << vtkFileName << timestep << ".vtk";
+  oss << vtkFileName << "." << timestep << ".vtk";
   std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
-  std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
+  std::ofstream vtkFile( oss.str().c_str() );//, std::ios::binary | std::ios::out );
 
   // get size of domain without ghost layers
   int sizeX = grid0_->getSizeX() - 2;
@@ -196,7 +301,6 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   // Write density field
   vtkFile << "SCALARS density double\n";
   vtkFile << "LOOKUP_TABLE default\n";
-  //vtkFile.setf( std::ios::binary | std::ios::out );
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {
@@ -205,11 +309,9 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
       }
     }
   }
-  //vtkFile.setf( std::ios::out );
 
   // Write velocity vector field
   vtkFile << "VECTORS velocity double\n";
-  //vtkFile.setf( std::ios::binary | std::ios::out );
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {

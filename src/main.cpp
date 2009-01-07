@@ -11,9 +11,9 @@
 
 int main ( int argc, char** argv ) {
 
-  int sizeX = 7;
-  int sizeY = 8;
-  int sizeZ = 9;
+  int sizeX = 82;
+  int sizeY = 82;
+  int sizeZ = 82;
 
   std::vector< Vec3<int> > bound;
   // Create boundary cells
@@ -38,7 +38,7 @@ int main ( int argc, char** argv ) {
   // Create lid cells
   for ( int y = 1; y < sizeY - 1; ++y )
       for ( int x = 1; x < sizeX - 1; ++x )
-        bound.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
+        lid.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
 
   std::vector< Vec3<double> > vel;
   // Create lid velocities
@@ -47,7 +47,7 @@ int main ( int argc, char** argv ) {
 
 
   lbm::LBM myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
-  myLBM.run( 1.9, 100, 10, "vtk/example" );
+  myLBM.run( 1.9, 801, 25, "vtk/example_80_801_25" );
 
   return EXIT_SUCCESS;
 }
