@@ -47,7 +47,7 @@ int main ( int argc, char** argv ) {
 
 
   lbm::LBM myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
-  myLBM.run( 1.99, 0.03, 801, 25, "vtk/example_80_801_25" );
+  myLBM.run( 1.9, 0.03, 801, 25, "vtk/example_80_801_25" );
 
   return EXIT_SUCCESS;
 }

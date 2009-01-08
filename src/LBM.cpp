@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <cmath>
+#include <endian.h>
 
 #include "LBM.h"
 
@@ -78,10 +79,10 @@ void LBM::run( double omega,
         for ( int x = 1; x < grid0_->getSizeX() - 1; x++ ) {
 
           // Perform actual collision and streaming step
-//          collideStream( x, y, z, omega );
+          collideStream( x, y, z, omega );
           // Perform collision and streaming step with Smagorinsky turbulence
           // correction
-          collideStreamSmagorinsky( x, y, z, nu, cSqr );
+//          collideStreamSmagorinsky( x, y, z, nu, cSqr );
 
         } // x
       } // y
@@ -149,12 +150,12 @@ inline void LBM::collideStream( int x, int y, int z, double omega ) {
 
 inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, double cSqr ) {
 
-  // calculate rho and u
+  // Calculate rho and u
   double rho = (*grid0_)( x, y, z, 0 ); // df in center
   double ux = 0.;
   double uy = 0.;
   double uz = 0.;
-  // loop over all velocity directions but center
+  // Loop over all velocity directions but center
   for ( int f = 1; f < Dim; ++f ) {
     double fi = (*grid0_)( x, y, z, f );
     rho += fi;
@@ -172,13 +173,13 @@ inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, doubl
   u_( x, y, z, 1 ) = uy;
   u_( x, y, z, 2 ) = uz;
 
-  // collision step: calculate equilibrium distribution values and
+  // Collision step: calculate equilibrium distribution values and
   // perform collision (weighting with current distribution values)
   // streaming step: stream distribution values to neighboring cells
   double fc = rho - 1.5 * ( ux * ux + uy * uy + uz * uz );
   double feq[19];
 
-  // calculate equilibrium distribution functions
+  // Calculate equilibrium distribution functions
   feq[0]  = (1./3.)  *   fc; // C
   feq[1]  = (1./18.) * ( fc + 3 *   uy        + 4.5 *   uy        *   uy ); // N
   feq[2]  = (1./18.) * ( fc + 3 *   ux        + 4.5 *   ux        *   ux ); // E
@@ -199,7 +200,7 @@ inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, doubl
   feq[17] = (1./36.) * ( fc - 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // BS
   feq[18] = (1./36.) * ( fc - 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // BW
 
-  // calculate non-equilibrium stress tensor
+  // Calculate non-equilibrium stress tensor
   double qo = 0.;
   for ( int i = 0; i < 3; ++i ) {
     double qadd = 0.;
@@ -220,10 +221,11 @@ inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, doubl
 
   // Calculate local stress tensor
   double s = ( sqrt( nu * nu + 18. * cSqr * qo ) - nu ) / ( 6. * cSqr);
+  // Calculate turbulence modified inverse lattice viscosity
   double omega = 1. / ( 3. * ( nu + cSqr * s ) + .5 );
-  double omegai = 1 - omega;
+  double omegai = 1. - omega;
 
-  // loop over all velocity directions and stream collided distribution value
+  // Loop over all velocity directions and stream collided distribution value
   // to neighboring cells
   for ( int f = 0; f < Dim; ++f ) {
     (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
@@ -290,7 +292,7 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
   std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
 
-  // get size of domain without ghost layers
+  // Get size of domain without ghost layers
   int sizeX = grid0_->getSizeX() - 2;
   int sizeY = grid0_->getSizeY() - 2;
   int sizeZ = grid0_->getSizeZ() - 2;
@@ -299,7 +301,6 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   vtkFile << "# vtk DataFile Version 2.0\n";
   vtkFile << "VTK output file for time step " << timestep << "\n\n";
   vtkFile << "BINARY\n\n";
-//  vtkFile << "ASCII\n\n";
   vtkFile << "DATASET STRUCTURED_POINTS\n";
   vtkFile << "DIMENSIONS " << sizeX << " " << sizeY << " " << sizeZ << "\n";
   vtkFile << "ORIGIN 0.0 0.0 0.0\n";
@@ -312,8 +313,9 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {
-        vtkFile.write( reinterpret_cast<char *>( &rho_( x, y, z ) ), sizeof(double) );
-//        vtkFile << rho_( x, y, z ) << "\n";
+        // evil hack because vtk requires binary data to be in big endian
+        uint64_t dump = htobe64( *reinterpret_cast<uint64_t *>( &rho_( x, y, z ) ) );
+        vtkFile.write( reinterpret_cast<char *>( &dump ), sizeof(double) );
       }
     }
   }
@@ -323,12 +325,13 @@ void LBM::writeVtkFile( int timestep, std::string vtkFileName ) {
   for ( int z = 1; z <= sizeZ; ++z ) {
     for ( int y = 1; y <= sizeY; ++y ) {
       for ( int x = 1; x <= sizeX; ++x ) {
-        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 0 ) ), sizeof(double) );
-        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 1 ) ), sizeof(double) );
-        vtkFile.write( reinterpret_cast<char *>( &u_( x, y, z, 2 ) ), sizeof(double) );
-//        vtkFile << u_( x, y, z, 0 ) << " ";
-//        vtkFile << u_( x, y, z, 1 ) << " ";
-//        vtkFile << u_( x, y, z, 2 ) << "\n";
+        // evil hack because vtk requires binary data to be in big endian
+        uint64_t dump0 = htobe64( *reinterpret_cast<uint64_t *>( &u_( x, y, z, 0 ) ) );
+        uint64_t dump1 = htobe64( *reinterpret_cast<uint64_t *>( &u_( x, y, z, 1 ) ) );
+        uint64_t dump2 = htobe64( *reinterpret_cast<uint64_t *>( &u_( x, y, z, 2 ) ) );
+        vtkFile.write( reinterpret_cast<char *>( &dump0 ), sizeof(double) );
+        vtkFile.write( reinterpret_cast<char *>( &dump1 ), sizeof(double) );
+        vtkFile.write( reinterpret_cast<char *>( &dump2 ), sizeof(double) );
       }
     }
   }
