@@ -9,6 +9,7 @@
 #define LBM_H_
 
 #include <string>
+#include <sys/time.h>
 
 #include "D3Q19.h"
 #include "Vec.h"
@@ -43,6 +44,8 @@ private:
 
   // Internal helper functions
   // =========================
+
+  inline double getTime( timeval &start, timeval &end );
 
   inline void collideStream( int x, int y, int z, double omega );
 

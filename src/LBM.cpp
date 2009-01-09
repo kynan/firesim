@@ -68,43 +68,90 @@ void LBM::run( double omega,
   // squared Smagorinsky constant
   double cSqr = cSmagorinsky * cSmagorinsky;
 
+  double totTime = 0.;
+
+  // Get effective domain size (without ghost layer)
+  int sizeX = grid0_->getSizeX() - 2;
+  int sizeY = grid0_->getSizeY() - 2;
+  int sizeZ = grid0_->getSizeZ() - 2;
+
+  int numCells = sizeX * sizeY * sizeZ;
+
+#ifdef NOSMAGO
+  std::cout << "Starting LBM without Smagorinsky turbulence correction" << std::endl;
+#else
+  std::cout << "Starting LBM with Smagorinsky turbulence correction" << std::endl;
+#endif
+
   // loop over maxSteps time steps
   for ( int step = 0; step < maxSteps; ++step ) {
 
-    std::cout << "Time step " << step << " of " << maxSteps << std::endl;
+    struct timeval start, end;
+    double stepTime = 0.;
+
+    gettimeofday( &start, NULL );
 
     // loop over all cells but the ghost layer
-    for ( int z = 1; z < grid0_->getSizeZ() - 1; z++ ) {
-      for ( int y = 1; y < grid0_->getSizeY() - 1; y++ ) {
-        for ( int x = 1; x < grid0_->getSizeX() - 1; x++ ) {
+    for ( int z = 1; z <= sizeZ; z++ ) {
+      for ( int y = 1; y <= sizeY; y++ ) {
+        for ( int x = 1; x <= sizeX; x++ ) {
 
+#ifdef NOSMAGO
           // Perform actual collision and streaming step
           collideStream( x, y, z, omega );
+#else
           // Perform collision and streaming step with Smagorinsky turbulence
           // correction
-//          collideStreamSmagorinsky( x, y, z, nu, cSqr );
+          collideStreamSmagorinsky( x, y, z, nu, cSqr );
+#endif
 
         } // x
       } // y
     } // z
 
+    gettimeofday( &end, NULL );
+    double scTime = getTime( start, end );
+
     // Treat no-slip boundary conditions (walls)
     treatBoundary();
 
+    gettimeofday( &start, NULL );
+    double bTime = getTime( end, start );
+
     // Treat velocity cells
     treatVelocities();
+
+    gettimeofday( &end, NULL );
+    double vTime = getTime( start, end );
 
     // exchange grids for current and previous time step
     dfField *gridTmp = grid0_;
     grid0_ = grid1_;
     grid1_ = gridTmp;
 
+    stepTime = scTime + bTime + vTime;
+    totTime += stepTime;
+
+    std::cout << "Time step " << step << " of " << maxSteps << " took ";
+    std::cout << scTime << " + " << bTime << " + " << vTime << " = ";
+    std::cout << stepTime << "secs -> " << numCells / ( stepTime * 1000000 );
+    std::cout << " MLUP/s" << std::endl;
+
     if ( step % vtkStep == 0 ) writeVtkFile( step, vtkFileName );
 
   } // step
+  std::cout << "LBM finished! Processed " << maxSteps << " timesteps in ";
+  std::cout << totTime << " secs!" << std::endl;
+  std::cout << "Average speed of " << ( maxSteps * numCells ) / ( totTime * 1000000 );
+  std::cout << " MLUP/s" << std::endl;
 }
 
 // Internal helper functions
+
+inline double LBM::getTime( timeval &start, timeval &end ) {
+  return (double) ( end.tv_sec - start.tv_sec )
+          + (double) ( end.tv_usec - start.tv_usec ) / 1000000.;
+}
 
 inline void LBM::collideStream( int x, int y, int z, double omega ) {
 
@@ -164,7 +211,7 @@ inline void LBM::collideStreamSmagorinsky( int x, int y, int z, double nu, doubl
     uz += ez[f] * fi;
   }
   // DEBUG assertions
-  assert ( rho > 0.8 && rho < 1.2 );
+  assert ( rho > 0.5 && rho < 1.5 );
   assert ( fabs(ux) < 2. );
   assert ( fabs(uy) < 2. );
   assert ( fabs(uz) < 2. );

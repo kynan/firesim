@@ -6,14 +6,25 @@
  */
 
 #include <cstdlib>
+#include <iostream>
 
 #include "LBM.h"
 
 int main ( int argc, char** argv ) {
 
-  int sizeX = 82;
-  int sizeY = 82;
-  int sizeZ = 82;
+  if ( argc < 9 ) {
+    std::cerr << "usage: " << argv[0];
+    std::cerr << " sizeX sizeY sizeZ omega cSmago timesteps vtkStep vtkFile" << std::endl;
+    exit( EXIT_FAILURE );
+  }
+  int sizeX = atoi( argv[1] );
+  int sizeY = atoi( argv[2] );
+  int sizeZ = atoi( argv[3] );
+  double omega = atof( argv[4] );
+  double cSmago = atof( argv[5] );
+  int timesteps = atoi( argv[6] );
+  int vtkStep = atoi( argv[7] );
+  char* vtkFile = argv[8];
 
   std::vector< Vec3<int> > bound;
   // Create boundary cells
@@ -47,7 +58,7 @@ int main ( int argc, char** argv ) {
 
 
   lbm::LBM myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
-  myLBM.run( 1.9, 0.03, 801, 25, "vtk/example_80_801_25" );
+  myLBM.run( omega, cSmago, timesteps, vtkStep, vtkFile );
 
   return EXIT_SUCCESS;
 }
