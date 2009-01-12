@@ -3,12 +3,10 @@ CMAKE_MINIMUM_REQUIRED( VERSION 2.4 )
 
 PROJECT( lbm_reference )
 
-SET( CMAKE_C_FLAGS "-Wall -Winline -Wshadow -ansi -pedantic -fmessage-length=0" )
-SET( CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -DDEBUG" )
-SET( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG" )
-SET( CMAKE_CXX_FLAGS "-Wall -Winline -Wshadow -ansi -pedantic -fmessage-length=0" )
-SET( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g -DDEBUG" )
-SET( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" )
+SET( CMAKE_C_FLAGS_DEBUG "-Wall -Wextra -Winline -Wshadow -ansi -pedantic -fmessage-length=0 -g -DDEBUG" )
+SET( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -fmessage-length=0" )
+SET( CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -Winline -Wshadow -ansi -pedantic -fmessage-length=0 -g -DDEBUG" )
+SET( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fmessage-length=0" )
 
 SET( CMAKE_VERBOSE_MAKEFILE ON )
 

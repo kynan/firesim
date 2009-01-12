@@ -1,14 +1,30 @@
-/*
- * main.cpp
- *
- *  Created on: Jan 2, 2009
- *      Author: Florian Rathgeber
- */
+//! \file main.cpp
+//! \date   Jan 2, 2009
+//! \author Florian Rathgeber
 
 #include <cstdlib>
 #include <iostream>
 
 #include "LBM.h"
+
+//! Main function
+
+//! Initializes a lid driven cavity setup with no slip boundaries at all sides
+//! and a fixed velocity of 0.08 in x-direction at the lid (top w.r.t. to z)
+//! \note The commandline for the executable is:
+//!       <b>exename sizeX sizeY sizeZ omega cSmago timesteps vtkStep vtkFile</b>
+//! \param[in] sizeX \b int Domain size in x-dimension
+//! \param[in] sizeY \b int Domain size in y-dimension
+//! \param[in] sizeZ \b int Domain size in z-dimension
+//! \param[in] omega \b double Inverse lattice velocity (needs to be < 2)
+//! \param[in] cSmago \b double Smagorinsky constant (usually around 0.03)
+//! \param[in] timesteps \b int Number of simulation steps to perform
+//! \param[in] vtkStep \b int Number of simulation steps between subsequent
+//!                           writes of output files
+//! \param[in] vtkFile \b string Path and filename of the output files relative
+//!                              to the executable location. Will be appended
+//!                              by \e .step.vtk where \e step is the current
+//!                              time step
 
 int main ( int argc, char** argv ) {
 

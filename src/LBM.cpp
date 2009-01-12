@@ -1,9 +1,6 @@
-/*
- * LBM.cpp
- *
- *  Created on: Jan 2, 2009
- *      Author: Florian Rathgeber
- */
+//! \file LBM.cpp
+//! \date   Jan 2, 2009
+//! \author Florian Rathgeber
 
 #include <iostream>
 #include <fstream>
@@ -15,9 +12,9 @@
 
 namespace lbm {
 
-// Constructors and destructors
-
-LBM::LBM() {}
+// ============================ //
+// Constructors and destructors //
+// ============================ //
 
 LBM::LBM( int sizeX,
           int sizeY,
@@ -53,7 +50,9 @@ LBM::~LBM() {
   delete grid1_;
 }
 
-// Set methods
+// =========== //
+// Set methods //
+// =========== //
 
 void LBM::run( double omega,
                double cSmagorinsky,
@@ -142,13 +141,16 @@ void LBM::run( double omega,
     if ( step % vtkStep == 0 ) writeVtkFile( step, vtkFileName );
 
   } // step
+
   std::cout << "LBM finished! Processed " << maxSteps << " timesteps in ";
   std::cout << totTime << " secs!" << std::endl;
   std::cout << "Average speed of " << ( maxSteps * numCells ) / ( totTime * 1000000 );
   std::cout << " MLUP/s" << std::endl;
 }
 
-// Internal helper functions
+// ========================= //
+// Internal helper functions //
+// ========================= //
 
 inline double LBM::getTime( timeval &start, timeval &end ) {
   return (double) ( end.tv_sec - start.tv_sec )
