@@ -61,12 +61,14 @@ void LBM::run( double omega,
                int vtkStep,
                std::string vtkFileName ) {
 
+#ifndef NSMAGO
   // relaxation parameter
   double tau = 1. / omega;
   // lattice viscosity
   double nu = ( 2. * tau - 1. ) * (1./6.);
   // squared Smagorinsky constant
   double cSqr = cSmagorinsky * cSmagorinsky;
+#endif
 
   double totTime = 0.;
 
@@ -77,7 +79,7 @@ void LBM::run( double omega,
 
   int numCells = sizeX * sizeY * sizeZ;
 
-#ifdef NOSMAGO
+#ifdef NSMAGO
   std::cout << "Starting LBM without Smagorinsky turbulence correction" << std::endl;
 #else
   std::cout << "Starting LBM with Smagorinsky turbulence correction" << std::endl;
@@ -96,7 +98,7 @@ void LBM::run( double omega,
       for ( int y = 1; y <= sizeY; y++ ) {
         for ( int x = 1; x <= sizeX; x++ ) {
 
-#ifdef NOSMAGO
+#ifdef NSMAGO
           // Perform actual collision and streaming step
           collideStream( x, y, z, omega );
 #else
@@ -293,8 +295,8 @@ inline void LBM::treatBoundary() {
 
     // Go over all distribution values and stream to inverse distribution
     // value of adjacent cell in inverse direction (bounce back)
-    for ( int i = 1; i < Dim; ++i ) {
-      (*grid1_)( x - ex[i], y - ey[i], z - ez[i], finv[i] ) = (*grid1_)( x, y, z, i );
+    for ( int f = 1; f < Dim; ++f ) {
+      (*grid1_)( x - ex[f], y - ey[f], z - ez[f], finv[f] ) = (*grid1_)( x, y, z, f );
     }
   }
 }
@@ -302,7 +304,7 @@ inline void LBM::treatBoundary() {
 inline void LBM::treatVelocities() {
 
   // Iterate over all velocity boundary cells
-  for( int i = 0; i < velocityCells_.size(); ++i ) {
+  for( int i = 0; i < (int) velocityCells_.size(); ++i ) {
 
     // Fetch coordinates of current boundary cell
     int x = velocityCells_[i][0];
@@ -322,11 +324,11 @@ inline void LBM::treatVelocities() {
     // Go over all distribution values, stream to inverse distribution value of
     // adjacent cell in inverse direction (bounce back) and modify by velocity
     // of moving wall
-    for ( int i = 1; i < Dim; ++i ) {
-      int op = finv[i];
-      (*grid1_)( x - ex[i], y - ey[i], z - ez[i], op )
-        = (*grid1_)( x, y, z, i )
-          + rho * w[i] * ( ex[op] * ux + ey[op] * uy + ez[op] * uz );
+    for ( int f = 1; f < Dim; ++f ) {
+      int op = finv[f];
+      (*grid1_)( x - ex[f], y - ey[f], z - ez[f], op )
+        = (*grid1_)( x, y, z, f )
+          + rho * w[f] * ( ex[op] * ux + ey[op] * uy + ez[op] * uz );
     }
   }
 }

@@ -22,7 +22,7 @@
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildArguments</key>
-					<value>-C ${workspace_loc}/lbm_reference/Build  -j2</value>
+					<value>-C ${ProjDirPath}/${ConfigName}  -j2</value>
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildCommand</key>
