@@ -16,8 +16,8 @@
 //! \param[in] sizeX \b int Domain size in x-dimension
 //! \param[in] sizeY \b int Domain size in y-dimension
 //! \param[in] sizeZ \b int Domain size in z-dimension
-//! \param[in] omega \b double Inverse lattice velocity (needs to be < 2)
-//! \param[in] cSmago \b double Smagorinsky constant (usually around 0.03)
+//! \param[in] omega \b float Inverse lattice velocity (needs to be < 2)
+//! \param[in] cSmago \b float Smagorinsky constant (usually around 0.03)
 //! \param[in] timesteps \b int Number of simulation steps to perform
 //! \param[in] vtkStep \b int Number of simulation steps between subsequent
 //!                           writes of output files
@@ -36,8 +36,8 @@ int main ( int argc, char** argv ) {
   int sizeX = atoi( argv[1] );
   int sizeY = atoi( argv[2] );
   int sizeZ = atoi( argv[3] );
-  double omega = atof( argv[4] );
-  double cSmago = atof( argv[5] );
+  float omega = atof( argv[4] );
+  float cSmago = atof( argv[5] );
   int timesteps = atoi( argv[6] );
   int vtkStep = atoi( argv[7] );
   char* vtkFile = argv[8];
@@ -67,13 +67,13 @@ int main ( int argc, char** argv ) {
       for ( int x = 1; x < sizeX - 1; ++x )
         lid.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
 
-  std::vector< Vec3<double> > vel;
+  std::vector< Vec3<float> > vel;
   // Create lid velocities
   for ( int i = 0; i < (sizeX - 2) * (sizeY - 2); ++i )
-    vel.push_back( Vec3<double>( 0.08, 0., 0. ) );
+    vel.push_back( Vec3<float>( 0.08, 0., 0. ) );
 
 
-  lbm::LBM myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
+  lbm::LBM<float> myLBM( sizeX, sizeY, sizeZ, bound, lid, vel );
   myLBM.run( omega, cSmago, timesteps, vtkStep, vtkFile );
 
   return EXIT_SUCCESS;
