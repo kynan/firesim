@@ -64,7 +64,7 @@ public:
 
   inline const T& operator[]( int i ) const { return data_[i]; }
 
-private:
+protected:
 
   // ============ //
   // Data members //

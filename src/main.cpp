@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "LBM.h"
+#include "lbm/LBM.h"
 
 //! Main function
 

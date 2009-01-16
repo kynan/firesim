@@ -8,10 +8,6 @@
 #include <assert.h>
 #include <vector>
 
-//! Common namespace for all LBM classes
-
-namespace lbm {
-
 //! 3-dimensional grid of Cells with template specifyable number of cell
 //! variables and type
 
@@ -31,9 +27,7 @@ public:
 
   //! Creates a grid with zero cells in each dimension
 
-  Grid() :
-    sizeX_(0), sizeY_(0), sizeZ_(0), data_(0) {
-  }
+  Grid();
 
   //! Constructor to specify grid dimensions
 
@@ -41,12 +35,7 @@ public:
   //! \param[in] sizeY Grid size in y-dimension
   //! \param[in] sizeZ Grid size in z-dimension
 
-  Grid(int sizeX, int sizeY, int sizeZ) :
-    sizeX_(sizeX),
-    sizeY_(sizeY),
-    sizeZ_(sizeZ),
-    data_(Cellsize * sizeX * sizeY * sizeZ) {
-  }
+  Grid(int sizeX, int sizeY, int sizeZ);
 
   //! Constructor to specify grid dimensions and initialization value
 
@@ -55,20 +44,13 @@ public:
   //! \param[in] sizeZ Grid size in z-dimension
   //! \param[in] val Initial value for all cell variables
 
-  Grid(int sizeX, int sizeY, int sizeZ, T val) :
-    sizeX_(sizeX),
-    sizeY_(sizeY),
-    sizeZ_(sizeZ),
-    data_(Cellsize * sizeX * sizeY * sizeZ, val) {
-  }
+  Grid(int sizeX, int sizeY, int sizeZ, T val);
 
   //! Destructor
 
   //! Clears the vector of cell variables
 
-  virtual ~Grid() {
-    data_.clear();
-  }
+  virtual ~Grid();
 
   // ============= //
   // Set operators //
@@ -81,17 +63,13 @@ public:
   //! \param[in] sizeZ Grid size in z-dimension
   //! \param[in] val Initial value for all cell variables
 
-  void init( int sizeX, int sizeY, int sizeZ, T val ) {
-    data_.assign( Cellsize * sizeX * sizeY * sizeZ, val );
-  }
+  void init( int sizeX, int sizeY, int sizeZ, T val );
 
   //! Initialize the grid with given initial value
 
   //! \param[in] val Initial value for all cell variables
 
-  void init( T val ) {
-    data_.assign( Cellsize * sizeX_ * sizeY_ * sizeZ_, val );
-  }
+  void init( T val );
 
   // ================ //
   // Access operators //
@@ -129,14 +107,7 @@ public:
   //! \param[in] f Cell variable index
   //! \return Reference to specified cell variable of specified cell
 
-  inline T& operator()(int x, int y, int z, int f) {
-    assert( x >= 0 && x < sizeX_ );
-    assert( y >= 0 && y < sizeY_ );
-    assert( z >= 0 && z < sizeZ_ );
-    assert( f >= 0 && f < Cellsize );
-
-    return data_[((z * sizeY_ + y) * sizeX_ + x) * Cellsize + f];
-  }
+  inline T& operator()(int x, int y, int z, int f);
 
   //! Get specified const cell variable of specified cell
 
@@ -146,16 +117,9 @@ public:
   //! \param[in] f Cell variable index
   //! \return Const reference to specified cell variable of specified cell
 
-  inline const T& operator()(int x, int y, int z, int f) const {
-    assert( x >= 0 && x < sizeX_ );
-    assert( y >= 0 && y < sizeY_ );
-    assert( z >= 0 && z < sizeZ_ );
-    assert( f >= 0 && f < Cellsize );
+  inline const T& operator()(int x, int y, int z, int f) const;
 
-    return data_[((z * sizeY_ + y) * sizeX_ + x) * Cellsize + f];
-  }
-
-private:
+protected:
 
   // ============ //
   // Data members //
@@ -198,9 +162,7 @@ public:
 
   //! Creates a grid with zero cells in each dimension
 
-  inline Grid() :
-    sizeX_(0), sizeY_(0), sizeZ_(0), data_(0) {
-  }
+  Grid();
 
   //! Constructor to specify grid dimensions
 
@@ -208,12 +170,7 @@ public:
   //! \param[in] sizeY Grid size in y-dimension
   //! \param[in] sizeZ Grid size in z-dimension
 
-  inline Grid(int sizeX, int sizeY, int sizeZ) :
-    sizeX_(sizeX),
-    sizeY_(sizeY),
-    sizeZ_(sizeZ),
-    data_(sizeX * sizeY * sizeZ) {
-  }
+  Grid(int sizeX, int sizeY, int sizeZ);
 
   //! Constructor to specify grid dimensions and initialization value
 
@@ -222,20 +179,13 @@ public:
   //! \param[in] sizeZ Grid size in z-dimension
   //! \param[in] val Initial value for cells
 
-  inline Grid(int sizeX, int sizeY, int sizeZ, T val) :
-    sizeX_(sizeX),
-    sizeY_(sizeY),
-    sizeZ_(sizeZ),
-    data_(sizeX * sizeY * sizeZ, val) {
-  }
+  Grid(int sizeX, int sizeY, int sizeZ, T val);
 
   //! Destructor
 
   //! Clears the vector of cell variables
 
-  inline virtual ~Grid() {
-    data_.clear();
-  }
+  virtual ~Grid();
 
   // ============= //
   // Set operators //
@@ -248,17 +198,13 @@ public:
   //! \param[in] sizeZ Grid size in z-dimension
   //! \param[in] val Initial value for cells
 
-  void init( int sizeX, int sizeY, int sizeZ, T val ) {
-    data_.assign( sizeX * sizeY * sizeZ, val );
-  }
+  void init( int sizeX, int sizeY, int sizeZ, T val );
 
   //! Initialize the grid with given initial value
 
   //! \param[in] val Initial value for cells
 
-  void init( T val ) {
-    data_.assign( sizeX_ * sizeY_ * sizeZ_, val );
-  }
+  void init( T val );
 
   // ================ //
   // Access operators //
@@ -295,13 +241,7 @@ public:
   //! \param[in] z Cell coordinate in z-dimension
   //! \return Reference to specified cell variable of specified cell
 
-  inline T& operator()(int x, int y, int z) {
-    assert( x >= 0 && x < sizeX_ );
-    assert( y >= 0 && y < sizeY_ );
-    assert( z >= 0 && z < sizeZ_ );
-
-    return data_[(z * sizeY_ + y) * sizeX_ + x];
-  }
+  inline T& operator()(int x, int y, int z);
 
   //! Get specified constant cell variable of specified cell
 
@@ -311,15 +251,9 @@ public:
   //! \param[in] f Cell variable index
   //! \return Constant reference to specified cell variable of specified cell
 
-  inline const T& operator()(int x, int y, int z) const {
-    assert( x >= 0 && x < sizeX_ );
-    assert( y >= 0 && y < sizeY_ );
-    assert( z >= 0 && z < sizeZ_ );
+  inline const T& operator()(int x, int y, int z) const;
 
-    return data_[(z * sizeY_ + y) * sizeX_ + x];
-  }
-
-private:
+protected:
 
   //! Number of cells in x-dimension
 
@@ -339,6 +273,7 @@ private:
 
 };
 
-} // namespace lbm
+// include the definitions
+#include "Grid_def.h"
 
 #endif /* GRID_H_ */

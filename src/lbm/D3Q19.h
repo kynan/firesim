@@ -7,8 +7,6 @@
 #ifndef D3Q19_H_
 #define D3Q19_H_
 
-#include "Grid.h"
-
 //! Common namespace for all LBM classes
 
 namespace lbm {
@@ -16,18 +14,6 @@ namespace lbm {
 //! Number of distribution functions for each cell
 
 const int Dim = 19;
-
-//! Type defintion for a field of distribution functions
-
-typedef Grid<double,19> dfField;
-
-//! Type defintion for a velocity field
-
-typedef Grid<double, 3> vField;
-
-//! Type defintion for a scalar field
-
-typedef Grid<double, 1> sField;
 
 //! Directions of the 19 distribution values for each cell
 
