@@ -7,4 +7,4 @@ SET( CMAKE_C_FLAGS_RELEASENSMAGO "${CMAKE_C_FLAGS_RELEASE} -DNSMAGO" )
 # Module to automatically create doc target
 INCLUDE( TargetDoc OPTIONAL)
 
-ADD_EXECUTABLE( lbm_reference main.cpp )
+ADD_EXECUTABLE( lbm_reference main.cpp confparser/ConfParser.cpp confparser/ConfBlock.cpp )
