@@ -10,6 +10,7 @@
 #include <string>
 #include <map>
 #include <boost/algorithm/string_regex.hpp>
+#include <boost/lexical_cast.hpp>
 
 //! Common namespace for all classes related to parsing of configuration files
 
@@ -46,23 +47,24 @@ namespace confparser {
     // Getters //
     // ======= //
 
-    //! Get the parent
+    //! Retrieve parameter as certain type
 
-    //! \return Partent block of the current block
+    //! \param[in] key Parameter name to retrieve
+    //! \tparam    T   Type to retrieve parameter in
+    //! \return Parameter specified by \em key as type \em T
 
-    ConfBlock* parent();
+    template < typename T >
+    T getParam( std::string key ) {
+      return boost::lexical_cast<T>( props_[ key ] );
+    }
 
-    //! Get the first child
+    //! Find the next sibling block with given name
 
-    //! \return First child block of current block
+    //! \param[in] name Name of the block to search for
+    //! \return Pointer to the first sibling block with given name, \em NULL if
+    //!         none was found
 
-    ConfBlock* child();
-
-    //! Get the first sibling
-
-    //! \return First sibling block of current block
-
-    ConfBlock* sibling();
+    ConfBlock* findSibling( std::string name );
 
     // ======= //
     // Setters //
@@ -73,12 +75,48 @@ namespace confparser {
     //! \param[in] key   Parameter name to add
     //! \param[in] value Parameter value to add
 
-    void addKey( std::string key, std::string value );
+    void addParam( std::string key, std::string value ) {
+      props_.insert( std::make_pair( key, value ) );
+    }
 
-    //! Declare ConfParser as friend class
-    friend class ConfParser;
+    //! Set parameter
+
+    //! \param[in] key   Parameter name to set
+    //! \param[in] value Parameter value to set
+    //! \tparam    T     Type of the parameter to set (will be converted to string)
+
+    template < typename T >
+    void setParam( std::string key, T value ) {
+      props_[ key ] = boost::lexical_cast<std::string>( value );
+    }
+
+//    //! Move on to next sibling
+//
+//    //! After this operator \em this will point to the next sibling if any
+//    //! \return \em true if succeeded, \em false if there is no further sibling
+//
+//    inline bool advance();
+//
+//    //! Move on to first child
+//
+//    //! After this operator \em this will point to the first child if any
+//    //! \return \em true if succeeded, \em false if there is no child
+//
+//    inline bool stepIn();
+//
+//    //! Move out to parent
+//
+//    //! After this operator \em this will point to the parent if any
+//    //! \return \em true if succeeded, \em false if there is no parent (i.e. it
+//    //! is the outermost block)
+//
+//    inline bool stepOut();
 
   protected:
+
+    //! Declare ConfParser as friend class
+
+    friend class ConfParser;
 
     // ============ //
     // Data members //

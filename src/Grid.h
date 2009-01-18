@@ -248,7 +248,6 @@ public:
   //! \param[in] x Cell coordinate in x-dimension
   //! \param[in] y Cell coordinate in y-dimension
   //! \param[in] z Cell coordinate in z-dimension
-  //! \param[in] f Cell variable index
   //! \return Constant reference to specified cell variable of specified cell
 
   inline const T& operator()(int x, int y, int z) const;

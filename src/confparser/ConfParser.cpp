@@ -94,7 +94,10 @@ namespace confparser {
       // Check whether it is a key / value pair
       } else if ( regex_match( l.c_str(), m, keyVal ) ) {
 
-        currBlock->addKey( m[1], m[2] );
+//        currBlock->addParam( l.substr( m[1].first, m[1].second - m[1].first ),
+//                             l.substr( m[2].first, m[2].second - m[2].first ) );
+//        currBlock->addParam( string( m[1] ), string( m[2] ) );
+        currBlock->addParam( m[1], m[2] );
 
       // Else we have a malformed expression and throw an exception
       } else {
