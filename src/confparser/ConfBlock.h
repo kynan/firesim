@@ -9,8 +9,9 @@
 
 #include <string>
 #include <map>
-#include <boost/algorithm/string_regex.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include "ConfBlockIterator.h"
 
 //! Common namespace for all classes related to parsing of configuration files
 
@@ -20,6 +21,11 @@ namespace confparser {
   //! file
 
   class ConfBlock {
+
+    //! Declare ConfParser and ConfBlockIterator as friend class
+
+    friend class ConfParser;
+    friend class ConfBlockIterator;
 
   public:
 
@@ -58,6 +64,10 @@ namespace confparser {
       return boost::lexical_cast<T>( props_[ key ] );
     }
 
+    //! Get the full qualified name of the block
+
+    std::string getQualifiedName();
+
     //! Find the next sibling block with given name
 
     //! \param[in] name Name of the block to search for
@@ -65,6 +75,8 @@ namespace confparser {
     //!         none was found
 
     ConfBlock* findSibling( std::string name );
+
+    ConfBlock* findRec( std::string name );
 
     // ======= //
     // Setters //
@@ -90,33 +102,43 @@ namespace confparser {
       props_[ key ] = boost::lexical_cast<std::string>( value );
     }
 
-//    //! Move on to next sibling
-//
-//    //! After this operator \em this will point to the next sibling if any
-//    //! \return \em true if succeeded, \em false if there is no further sibling
-//
-//    inline bool advance();
-//
-//    //! Move on to first child
-//
-//    //! After this operator \em this will point to the first child if any
-//    //! \return \em true if succeeded, \em false if there is no child
-//
-//    inline bool stepIn();
-//
-//    //! Move out to parent
-//
-//    //! After this operator \em this will point to the parent if any
-//    //! \return \em true if succeeded, \em false if there is no parent (i.e. it
-//    //! is the outermost block)
-//
-//    inline bool stepOut();
+    //! Write out a configuration file of this block's subtree
+
+    //! \param[in] fileName Name of the configuration file to write out
+
+    void writeConfigFile( std::string fileName );
+
+    // ========= //
+    // Iterators //
+    // ========= //
+
+    //! Returns an iterator pointing to the current block
+
+    //! \param[in] name      Restricts the iterator to only iterate over blocks
+    //!                      with given name (optional, defaults to empty)
+    //! \param[in] maxDepth  Maximum recursion depth, counted from level where
+    //!                      the iterator is created at. A value of 0 makes the
+    //!                      iterator non-recursive, -1 makes no restriction to
+    //!                      the recursion depth (the default).
+
+    ConfBlockIterator begin( std::string name = "", int maxDepth = -1 ) {
+      return ConfBlockIterator( this, name, maxDepth, true );
+    }
+
+    //! Returns an iterator pointing to the end, i.e. an invalid block
+
+    //! \param[in] name      Restricts the iterator to only iterate over blocks
+    //!                      with given name (optional, defaults to empty)
+    //! \param[in] maxDepth  Maximum recursion depth, counted from level where
+    //!                      the iterator is created at. A value of 0 makes the
+    //!                      iterator non-recursive, -1 makes no restriction to
+    //!                      the recursion depth (the default).
+
+    ConfBlockIterator end( std::string name = "", int maxDepth = -1 ) {
+      return ConfBlockIterator( this, name, maxDepth, false );
+    }
 
   protected:
-
-    //! Declare ConfParser as friend class
-
-    friend class ConfParser;
 
     // ============ //
     // Data members //

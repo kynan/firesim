@@ -7,10 +7,9 @@
 #ifndef CONFPARSER_H_
 #define CONFPARSER_H_
 
-#include <cstdio>
+//#include <cstdio>
+#include <cstring>
 #include <exception>
-
-#include "ConfBlock.h"
 
 //! Common namespace for all classes related to parsing of configuration files
 
@@ -135,6 +134,8 @@ namespace confparser {
   //! \endcode
   //! The parsing result is a tree structure of ConfBlock objects and the actual
   //! key-value pairs are stored in a std::map
+
+  class ConfBlock;
 
   class ConfParser {
 

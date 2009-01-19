@@ -4,10 +4,12 @@
 //! \date   Jan 17, 2009
 //! \author Florian Rathgeber
 
+#include <cstddef>
 #include <fstream>
 #include <boost/algorithm/string_regex.hpp>
 
 #include "ConfParser.h"
+#include "ConfBlock.h"
 
 using namespace std;
 using namespace boost;
@@ -79,13 +81,13 @@ namespace confparser {
         ++level;
         ConfBlock* newBlock = new ConfBlock( m[1], level, currBlock );
 
-        // Check if the current block already has a child, then the new block
-        // is the sibling of the previous child
-        if ( currBlock->child_ != NULL ) {
+        // Check if the current block has no child yet, then the new block
+        // is the current block's first child
+        if ( currBlock->child_ == 0 ) {
           currBlock->child_ = newBlock;
-        // Else the new block is the current block's first child
+        // Else the new block is the sibling of the previous child
         } else {
-          assert( prevChild != NULL );
+          assert( prevChild != 0 );
           prevChild->sibling_ = newBlock;
         }
         currBlock = newBlock;
