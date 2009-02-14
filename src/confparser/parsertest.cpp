@@ -18,7 +18,7 @@ int main( int argc, char** argv ) {
 
   if ( argc < 2 ) {
     cerr << "Usage: " << argv[0] << " <config_file> [<config_file> ...]" << endl;
-    return EXIT_FAILURE;
+    return -1;
   }
 
   ConfParser p;
@@ -27,10 +27,11 @@ int main( int argc, char** argv ) {
     try {
       ConfBlock* b = p.parse( argv[i] );
       b->writeConfigFile( string( argv[i] ) + ".out" );
+      delete b;
     } catch ( BadSyntax e ) {
       cerr << e.what() << endl;
     }
   }
 
-  return EXIT_SUCCESS;
+  return 0;
 }

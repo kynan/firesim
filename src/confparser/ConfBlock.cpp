@@ -6,6 +6,7 @@
 //!
 //! Detailed description
 
+#include <iostream>
 #include <fstream>
 #include <boost/algorithm/string_regex.hpp>
 
@@ -30,6 +31,11 @@ ConfBlock::ConfBlock( std::string blockName, int level, ConfBlock* parent )
 ConfBlock::~ConfBlock() {
 
   if ( child_ != NULL ) delete child_;
+  if ( sibling_ != NULL ) delete sibling_;
+
+}
+
+void ConfBlock::unlink() {
 
   // Remove the block from the siblings unless it is the outermost block
   if ( parent_ != NULL ) {
@@ -46,6 +52,11 @@ ConfBlock::~ConfBlock() {
       prevSib->sibling_ = sibling_;
     }
   }
+
+  // Then set the sibling to NULL in order to save it from destruction and call
+  // destructor
+  sibling_ = NULL;
+  delete this;
 }
 
 // ======= //
@@ -99,28 +110,38 @@ ConfBlock* ConfBlock::findRec( std::string name ) {
 void ConfBlock::writeConfigFile( std::string fileName ) {
 
   std::ofstream f( fileName.c_str() );
-  int prevLvl = level_;
+  f << "# Automatically generated config file\n\n";
+  writeConfigFileRec( f, level_ );
+  f.close();
 
-  for ( ConfBlockIterator it = begin(); it != end(); ++it ) {
+}
 
-    ConfBlock currBlock = *it;
-    std::string indent( 2 * ( currBlock.level_ - level_ ), ' ' );
+// ========================== //
+// Protected helper functions //
+// ========================== //
 
-    // Close brackets for every block closed since the previous
-    for ( int i = prevLvl; i > currBlock.level_; --i ) {
-      f << std::string( 2 * ( i - level_ ), ' ' ) << '}' << '\n';
-    }
+void ConfBlock::writeConfigFileRec( std::ofstream &fileHandle, int initLvl ) {
 
-    f << indent << currBlock.blockName_ << " {" << '\n';
+  std::string indent( level_ == initLvl ? 0 : 2 * ( level_ - initLvl - 1), ' ' );
 
-    indent.append( 2, ' ' );
-    f << '\n';
-    std::map<std::string,std::string>::iterator mit;
-    for ( mit = currBlock.props_.begin(); mit != currBlock.props_.end(); ++mit ) {
-      f << indent << mit->first << " " << mit->second << '\n';
-    }
-    f << '\n';
+  // Start new block unless we are the outermost
+  if ( level_ > initLvl ) fileHandle << indent << blockName_ << " {\n\n";
+
+  // Write out all data of current block
+  std::map<std::string,std::string>::iterator mit;
+  for ( mit = props_.begin(); mit != props_.end(); ++mit ) {
+    fileHandle << indent << ( level_ > initLvl ? "  " : "" ) << mit->first << " " << mit->second << ";\n";
   }
+  fileHandle << '\n';
+
+  // Process children first, if any
+  if ( child_ != NULL ) child_->writeConfigFileRec( fileHandle, initLvl );
+
+  // End block unless we are the outermost
+  if ( level_ > initLvl ) fileHandle << indent << "}\n\n";
+
+  // Continue with next sibling if any
+  if ( sibling_ != NULL ) sibling_->writeConfigFileRec( fileHandle, initLvl );
 
 }
 

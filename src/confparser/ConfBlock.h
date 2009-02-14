@@ -49,6 +49,10 @@ namespace confparser {
 
     virtual ~ConfBlock();
 
+    //! Unchains the block from its siblings and deletes all its offspring
+
+    void unlink();
+
     // ======= //
     // Getters //
     // ======= //
@@ -66,6 +70,8 @@ namespace confparser {
 
     //! Get the full qualified name of the block
 
+    //! \return Full qualified name of the block, separated by dots
+
     std::string getQualifiedName();
 
     //! Find the next sibling block with given name
@@ -75,6 +81,12 @@ namespace confparser {
     //!         none was found
 
     ConfBlock* findSibling( std::string name );
+
+    //! Find the next block in the subtree of the current one with given name
+
+    //! \param[in] name Name of the block to search for
+    //! \return Pointer to the first block with given name in the subtree of
+    //!         the current block, \em NULL if none was found
 
     ConfBlock* findRec( std::string name );
 
@@ -140,31 +152,43 @@ namespace confparser {
 
   protected:
 
+    // ========================== //
+    // Protected helper functions //
+    // ========================== //
+
+    //! Recursive helper function to write the configuration of a subtree to a
+    //! file
+
+    //! \param[in] fileHandle Stream to write to
+    //! \param[in] initLvl    Level of the block writeConfigFile was called from
+
+    void writeConfigFileRec( std::ofstream &fileHandle, int initLvl );
+
     // ============ //
     // Data members //
     // ============ //
 
-    // Name of this configuration block
+    //! Name of this configuration block
 
     std::string blockName_;
 
-    // Nesting level in the block hierarchy
+    //! Nesting level in the block hierarchy
 
     int level_;
 
-    // Pointer to to key / value pairs defined in this block (may be NULL)
+    //! Pointer to to key / value pairs defined in this block (may be NULL)
 
     std::map< std::string, std::string > props_;
 
-    // Pointer to first subblock (may be NULL)
+    //! Pointer to first subblock (may be NULL)
 
     ConfBlock* child_;
 
-    // Pointer to next sibling block (may be NULL)
+    //! Pointer to next sibling block (may be NULL)
 
     ConfBlock* sibling_;
 
-    //Pointer to parent block (NULL only for the default block)
+    //! Pointer to parent block (NULL only for the default block)
 
     ConfBlock* parent_;
 

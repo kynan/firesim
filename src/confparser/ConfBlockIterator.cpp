@@ -4,6 +4,8 @@
 //! \date   Jan 19, 2009
 //! \author Florian Rathgeber
 
+#include <assert.h>
+
 #include "ConfBlockIterator.h"
 #include "ConfBlock.h"
 
@@ -43,8 +45,8 @@ namespace confparser {
     assert ( b_ != NULL );
 
     if ( recursive_ ) {
-      // First try to descend to child
-      if ( b_->child_ != NULL ) {
+      // First try to descend to child if we have not yet reached maxDepth
+      if ( b_->level_ < level_ + maxDepth_ && b_->child_ != NULL ) {
         b_ = b_->child_;
       // If there is no child try to advance to next sibling
       } else if ( b_->sibling_ != NULL ) {
@@ -70,14 +72,16 @@ namespace confparser {
     return a.b_ == b_ && a.level_ == level_
                       && a.name_ == name_
                       && a.recursive_ == recursive_
-                      && a.restricted_ == restricted_;
+                      && a.restricted_ == restricted_
+                      && a.maxDepth_ == maxDepth_;
   }
 
   bool ConfBlockIterator::operator!=( const ConfBlockIterator& a ) {
     return !( a.b_ == b_ && a.level_ == level_
                          && a.name_ == name_
                          && a.recursive_ == recursive_
-                         && a.restricted_ == restricted_ );
+                         && a.restricted_ == restricted_
+                         && a.maxDepth_ == maxDepth_ );
   }
 
   ConfBlock& ConfBlockIterator::operator*() {

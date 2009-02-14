@@ -4,7 +4,7 @@
 //! \date   Jan 17, 2009
 //! \author Florian Rathgeber
 
-#include <cstddef>
+#include <iostream>
 #include <fstream>
 #include <boost/algorithm/string_regex.hpp>
 
@@ -42,22 +42,11 @@ namespace confparser {
       // If the line contained only whitspace we can skip it
       if ( l.empty() ) continue;
 
-//      size_t n = l.find_first_not_of( " \r\n\t" );
-//      if ( n != std::string::npos ) {
-//        l.erase( 0, n );
-//      // if we do not find any non-whitespace character we can continue anyway
-//      } else {
-//        continue;
-//      }
-
       // Ignore lines beginning with # or // as comments
       if ( starts_with( l, "#") || starts_with( l, "//" ) ) continue;
-//      if ( ( l.length() > 0 && l[0] == '#' )
-//           || ( l.length() > 1 && l[0] == '/' && l[1] == '/' ) )
-//        continue;
 
       // Check whether it is the end of a block
-      if ( l[0] == '}' ) {
+      if ( l.length() == 1 && l[0] == '}' ) {
 
         // Syntax error if we are at level 0
         if ( level == 0 ) {
@@ -66,14 +55,15 @@ namespace confparser {
         }
 
         assert( currBlock->parent_ != NULL );
+        prevChild = currBlock;
         currBlock = currBlock->parent_;
         level--;
         continue;
       }
 
       cmatch m;
-      regex blockBegin( "(\\w+)\\s*\\{" );
-      regex keyVal( "(\\w+)\\s+(.*)" );
+      regex blockBegin( "^(\\w+)\\s*\\{$" );
+      regex keyVal( "^(\\w+)\\s+(.*);$" );
 
       // Check whether it is the beginning of a new block
       if ( regex_match( l.c_str(), m, blockBegin ) ) {
@@ -83,22 +73,18 @@ namespace confparser {
 
         // Check if the current block has no child yet, then the new block
         // is the current block's first child
-        if ( currBlock->child_ == 0 ) {
+        if ( currBlock->child_ == NULL ) {
           currBlock->child_ = newBlock;
         // Else the new block is the sibling of the previous child
         } else {
-          assert( prevChild != 0 );
+          assert( prevChild != NULL );
           prevChild->sibling_ = newBlock;
         }
         currBlock = newBlock;
-        prevChild = newBlock;
 
       // Check whether it is a key / value pair
       } else if ( regex_match( l.c_str(), m, keyVal ) ) {
 
-//        currBlock->addParam( l.substr( m[1].first, m[1].second - m[1].first ),
-//                             l.substr( m[2].first, m[2].second - m[2].first ) );
-//        currBlock->addParam( string( m[1] ), string( m[2] ) );
         currBlock->addParam( m[1], m[2] );
 
       // Else we have a malformed expression and throw an exception
@@ -109,6 +95,10 @@ namespace confparser {
       }
 
     }
+
+    // check if we are at outermost level again at the end
+    if ( level != 0 )
+      throw BadSyntax( configFileName.c_str(), nLine, "Unexpected end of configuration file" );
 
     return outermost;
 

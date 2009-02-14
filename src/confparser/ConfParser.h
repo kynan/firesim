@@ -112,17 +112,17 @@ namespace confparser {
 
   //! Parses hierarchical configuration files of the following structure:
   //! \code
-  //! key0 value0
+  //! key0 value0;
   //! ...
   //! block0 {
-  //!   key1 value1
+  //!   key1 value1;
   //!   ...
   //!   subblock0 {
-  //!     key2 value2
+  //!     key2 value2;
   //!     ...
   //!   }
   //!   subblock1 {
-  //!     key3 value3
+  //!     key3 value3;
   //!     ...
   //!   }
   //!   ...

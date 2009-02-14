@@ -29,11 +29,21 @@ namespace confparser {
     // Overloaded operators //
     // ==================== //
 
+    //! Advance to next matching ConfBlock
+
     void operator++();
+
+    //! Check if the given and this iterator match
 
     bool operator==( const ConfBlockIterator& a );
 
+    //! Check if the given and this iterator do not match
+
     bool operator!=( const ConfBlockIterator& a );
+
+    //! Deference the iterator
+
+    //! \return Reference to ConfBlock the iterator currently points to
 
     ConfBlock& operator*();
 
