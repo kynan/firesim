@@ -16,173 +16,182 @@
 #include "D3Q19.h"
 #include "../Vec.h"
 #include "../Grid.h"
+#include "../confparser/ConfParser.h"
+#include "../confparser/ConfBlock.h"
+
+using namespace confparser;
 
 //! Common namespace for all LBM classes
 
 namespace lbm {
 
-  //! Lattice Boltzmann Method fluid solver
+enum Flag {
+  UNDEFINED = 0,
+  FLUID     = 1,
+  NOSLIP    = 2,
+  VELOCITY  = 3
+};
 
-  //! Uses the BGK collision model and Smagorinsky turbulence correction
-  //! \note define the preprocessor symbol NSMAGO to disable turbulence correction
+//! Lattice Boltzmann Method fluid solver
 
-  template<typename T>
-  class LBM {
+//! Uses the BGK collision model and Smagorinsky turbulence correction
+//! \note define the preprocessor symbol NSMAGO to disable turbulence correction
 
-  public:
+template<typename T>
+class LBM {
 
-    // ============================ //
-    // Constructors and destructors //
-    // ============================ //
+public:
 
-    //! Constructor
+  // ============================ //
+  // Constructors and destructors //
+  // ============================ //
 
-    //! Initializes the geometry of the domain.
-    //! \note There is no default constructor available!
-    //! \param[in] sizeX Number of cells in x dimension, including ghost layer
-    //! \param[in] sizeY Number of cells in y dimension, including ghost layer
-    //! \param[in] sizeZ Number of cells in z dimension, including ghost layer
-    //! \param[in] boundaryCells Vector of coordinate triples specifying the
-    //!                          location of the no-slip boundary
-    //! \param[in] velocityCells Vector of coordinate triples specifying the
-    //!                          location of fixed-velocity cells
-    //! \param[in] velocities    Vector of 3-dimensional velocities corresponding
-    //!                          to the velocity cells (vector sizes must match!)
+  //! Constructor
 
-    LBM( int sizeX,
-         int sizeY,
-         int sizeZ,
-         std::vector< Vec3<int> > &boundaryCells,
-         std::vector< Vec3<int> > &velocityCells,
-         std::vector< Vec3<T> > &velocities );
+  //! Initializes the geometry of the domain and the boundaries according to the
+  //! configuration file given.
+  //! \note There is no default constructor available!
+  //! \param[in] configFileName Path to configuration file
 
-    //! Destructor
+  LBM( std::string configFileName );
 
-    //! Deletes the grids of the distribution functions
+  //! Destructor
 
-    virtual ~LBM();
+  //! Deletes the grids of the distribution functions
 
-    //! Run the solver with a given parameter set
+  virtual ~LBM();
 
-    //! The output will be written to a series of VTK files (legacy format)
-    //! \param[in] omega Inverse lattice velocity
-    //! \param[in] cSmagorinsky Smagorinsky constant for turbulence correction
-    //! \param[in] maxSteps Number of time steps to simulate
-    //! \param[in] vtkStep Number of time steps between two output file writes
-    //! \param[in] vtkFileName Name of the VTK output files to write out. Should
-    //!                        be prepended by the path where to put the files
-    //!                        relative to the executable. Will be appended by
-    //!                        \e .step.vtk where \e step is the current
-    //!                        simulation time step
+  //! Run the solver
 
-    void run( T omega,
-              T cSmagorinsky,
-               int maxSteps,
-               int vtkStep,
-               std::string vtkFileName );
+  //! The output will be written to a series of VTK files (legacy format)
 
-  protected:
+  void run();
 
-    // ========================= //
-    // Internal helper functions //
-    // ========================= //
+protected:
 
-    //! Get the time difference between two measurements
+  // ========================= //
+  // Internal helper functions //
+  // ========================= //
 
-    //! \param[in] start Start time of measurement as return by \e gettimeofday
-    //! \param[in] end   End time of measurement as return by \e gettimeofday
-    //! \returns Time difference \e end - \e start in seconds
+  void setup( std::string configFileName );
 
-    inline T getTime( timeval &start, timeval &end );
+  //! Get the time difference between two measurements
 
-    //! Perform a collide-stream step without turbulence correction
+  //! \param[in] start Start time of measurement as return by \e gettimeofday
+  //! \param[in] end   End time of measurement as return by \e gettimeofday
+  //! \returns Time difference \e end - \e start in seconds
 
-    //! \param[in] x Cell coordinate for dimension x
-    //! \param[in] y Cell coordinate for dimension y
-    //! \param[in] z Cell coordinate for dimension z
-    //! \param[in] omega Inverse lattice velocity
+  inline T getTime( timeval &start, timeval &end );
 
-    inline void collideStream( int x, int y, int z, T omega );
+  //! Perform a collide-stream step without turbulence correction
 
-    //! Perform a collide-stream step without turbulence correction
+  //! \param[in] x Cell coordinate for dimension x
+  //! \param[in] y Cell coordinate for dimension y
+  //! \param[in] z Cell coordinate for dimension z
+  //! \param[in] omega Inverse lattice velocity
 
-    //! \param[in] x Cell coordinate for dimension x
-    //! \param[in] y Cell coordinate for dimension y
-    //! \param[in] z Cell coordinate for dimension z
-    //! \param[in] nu Lattice viscosity
-    //! \param[in] cSqr Squared Smagorinsky constant
+  inline void collideStream( int x, int y, int z, T omega );
 
-    inline void collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr );
+  //! Perform a collide-stream step without turbulence correction
 
-    //! Treat the no-slip boundary cells
+  //! \param[in] x Cell coordinate for dimension x
+  //! \param[in] y Cell coordinate for dimension y
+  //! \param[in] z Cell coordinate for dimension z
+  //! \param[in] nu Lattice viscosity
+  //! \param[in] cSqr Squared Smagorinsky constant
 
-    inline void treatBoundary();
+  inline void collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr );
 
-    //! Treat the boundary cells with fixed velocity
+  //! Treat the no-slip boundary cells
 
-    inline void treatVelocities();
+  inline void treatBoundary();
 
-    //! Write out the VTK file for a given timestep
+  //! Treat the boundary cells with fixed velocity
 
-    //! \note Output is in binary VTK legacy file format
-    //! \param[in] timestep Current simulation step
-    //! \param[in] vtkFileName Name of the VTK output file to write out. Must be
-    //!                        prepended by the path where to put the files
-    //!                        relative to the executable. Will be appended by
-    //!                        \e .timestep.vtk
+  inline void treatVelocities();
 
-    void writeVtkFile( int timestep, std::string vtkFileName );
+  //! Write out the VTK file for a given timestep
 
-    // ============ //
-    // Data members //
-    // ============ //
+  //! \note Output is in binary VTK legacy file format
+  //! \param[in] timestep Current simulation step
 
-    //! Distribution function field (switched with grid1_ after each time step)
+  void writeVtkFile( int timestep );
 
-    Grid<T,Dim>* grid0_;
+  // ============ //
+  // Data members //
+  // ============ //
 
-    //! Distribution function field (switched with grid0_ after each time step)
+  //! Inverse lattice velocity
 
-    Grid<T,Dim>* grid1_;
+  T omega_;
 
-    //! Velocity field
+  //! Smagorinsky turbulence constant
 
-    Grid<T,3> u_;
+  T cSmagorinsky_;
 
-    //! Density field
+  //! Number of collide-stream steps to perform
 
-    Grid<T,1> rho_;
+  int maxSteps_;
 
-    //! List with coordinates of all boundary cells
+  //! VTK files will be written out at multiples of this step size
 
-    std::vector< Vec3<int> > boundaryCells_;
+  int vtkStep_;
 
-    //! List with coordinates of all velocity cells
+  //! Path and base name of VTK files to write out. Will be appended by
+  //! \em .currentStep.vtk
 
-    std::vector< Vec3<int> > velocityCells_;
+  std::string vtkFileName_;
 
-    //! List with velocities for all velocity cells
+  //! Distribution function field (switched with grid1_ after each time step)
 
-    std::vector< Vec3<T> > velocities_;
-  };
+  Grid<T,Dim>* grid0_;
 
-  //! Specialization of the the VTK file writer for template type double
+  //! Distribution function field (switched with grid0_ after each time step)
 
-  //! \note This is necessary as the type needs to be written to the VTK file in
-  //!       ASCII and there is no way to get an ASCII representation of the \e
-  //!       type of a template paramter
+  Grid<T,Dim>* grid1_;
 
-  template<>
-  void LBM<double>::writeVtkFile( int timestep, std::string vtkFileName );
+  //! Velocity field
 
-  //! Specialization of the the VTK file writer for template type float
+  Grid<T,3> u_;
 
-  //! \note This is necessary as the type needs to be written to the VTK file in
-  //!       ASCII and there is no way to get an ASCII representation of the \e
-  //!       type of a template paramter
+  //! Density field
 
-  template<>
-  void LBM<float>::writeVtkFile( int timestep, std::string vtkFileName );
+  Grid<T,1> rho_;
+
+  //! Flag field
+
+  Grid<Flag,1> flag_;
+
+  //! List with coordinates of all boundary cells
+
+  std::vector< Vec3<int> > boundaryCells_;
+
+  //! List with coordinates of all velocity cells
+
+  std::vector< Vec3<int> > velocityCells_;
+
+  //! List with velocities for all velocity cells
+
+  std::vector< Vec3<T> > velocities_;
+};
+
+//! Specialization of the the VTK file writer for template type double
+
+//! \note This is necessary as the type needs to be written to the VTK file in
+//!       ASCII and there is no way to get an ASCII representation of the \e
+//!       type of a template paramter
+
+template<>
+void LBM<double>::writeVtkFile( int timestep );
+
+//! Specialization of the the VTK file writer for template type float
+
+//! \note This is necessary as the type needs to be written to the VTK file in
+//!       ASCII and there is no way to get an ASCII representation of the \e
+//!       type of a template paramter
+
+template<>
+void LBM<float>::writeVtkFile( int timestep );
 
 } // namespace lbm
 

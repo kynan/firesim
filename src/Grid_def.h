@@ -36,6 +36,9 @@ Grid<T,Cellsize>::Grid(int sizeX, int sizeY, int sizeZ, T val) :
 
 template<typename T, int Cellsize>
 Grid<T,Cellsize>::~Grid() {
+  sizeX_ = 0;
+  sizeY_ = 0;
+  sizeZ_ = 0;
   data_.clear();
 }
 
@@ -45,6 +48,9 @@ Grid<T,Cellsize>::~Grid() {
 
 template<typename T, int Cellsize>
 void Grid<T,Cellsize>::init( int sizeX, int sizeY, int sizeZ, T val ) {
+  sizeX_ = sizeX;
+  sizeY_ = sizeY;
+  sizeZ_ = sizeZ;
   data_.assign( Cellsize * sizeX * sizeY * sizeZ, val );
 }
 
@@ -106,6 +112,9 @@ Grid<T,1>::Grid(int sizeX, int sizeY, int sizeZ, T val) :
 
 template<typename T>
 Grid<T,1>::~Grid() {
+  sizeX_ = 0;
+  sizeY_ = 0;
+  sizeZ_ = 0;
   data_.clear();
 }
 
@@ -115,6 +124,9 @@ Grid<T,1>::~Grid() {
 
 template<typename T>
 void Grid<T,1>::init( int sizeX, int sizeY, int sizeZ, T val ) {
+  sizeX_ = sizeX;
+  sizeY_ = sizeY;
+  sizeZ_ = sizeZ;
   data_.assign( sizeX * sizeY * sizeZ, val );
 }
 

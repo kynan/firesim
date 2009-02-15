@@ -25,6 +25,12 @@ namespace confparser {
 
   public:
 
+    //! Destructor
+
+    //! Does nothing
+
+    virtual ~ConfBlockIterator() {}
+
     // ==================== //
     // Overloaded operators //
     // ==================== //
@@ -70,12 +76,6 @@ namespace confparser {
                        std::string name,
                        int maxDepth,
                        bool begin );
-
-    //! Destructor
-
-    //! Does nothing
-
-    virtual ~ConfBlockIterator() {}
 
     // ============ //
     // Data members //

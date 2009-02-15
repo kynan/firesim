@@ -76,33 +76,6 @@ std::string ConfBlock::getQualifiedName() {
   return qName;
 }
 
-ConfBlock* ConfBlock::findSibling( std::string name ) {
-
-  ConfBlock* sib = this;
-
-  while ( sib->sibling_ != NULL ) {
-    sib = sib->sibling_;
-    if ( sib->blockName_ == name ) return sib;
-  }
-
-  return NULL;
-}
-
-ConfBlock* ConfBlock::findRec( std::string name ) {
-
-  ConfBlock* sib = this;
-  int initLvl = level_;
-
-  while ( sib->blockName_ != name ) {
-    if ( sib->child_ != NULL ) sib = sib->child_;
-    else if ( sib->sibling_ != NULL ) sib = sib->sibling_;
-    else if ( sib->level_ > initLvl && sib->level_ > 0 ) sib = sib->parent_;
-    else return NULL;
-  }
-
-  return sib;
-}
-
 // ======= //
 // Setters //
 // ======= //

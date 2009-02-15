@@ -20,6 +20,8 @@ namespace confparser {
 
     // Open configuration file
     ifstream configFile( configFileName.c_str() );
+    if ( !configFile ) throw BadSyntax( configFileName.c_str(), 0,
+        "Configuration file does not exist" );
 
     // Create default outermost block
     ConfBlock* outermost = new ConfBlock( "__default" );
@@ -63,7 +65,7 @@ namespace confparser {
 
       cmatch m;
       regex blockBegin( "^(\\w+)\\s*\\{$" );
-      regex keyVal( "^(\\w+)\\s+(.*);$" );
+      regex keyVal( "^(\\w+)\\s+(.*);" );
 
       // Check whether it is the beginning of a new block
       if ( regex_match( l.c_str(), m, blockBegin ) ) {
