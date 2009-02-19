@@ -29,7 +29,9 @@ enum Flag {
   UNDEFINED = 0,
   FLUID     = 1,
   NOSLIP    = 2,
-  VELOCITY  = 3
+  VELOCITY  = 3,
+  INFLOW    = 4,
+  PRESSURE  = 5
 };
 
 //! Lattice Boltzmann Method fluid solver
@@ -106,11 +108,19 @@ protected:
 
   //! Treat the no-slip boundary cells
 
-  inline void treatBoundary();
+  inline void treatNoslip();
 
   //! Treat the boundary cells with fixed velocity
 
-  inline void treatVelocities();
+  inline void treatVelocity();
+
+  //! Treat the inflow boundary cells
+
+  inline void treatInflow();
+
+  //! Treat the outflow boundary cells with fixed athmospheric pressure
+
+  inline void treatPressure();
 
   //! Write out the VTK file for a given timestep
 
@@ -164,9 +174,9 @@ protected:
 
   Grid<Flag,1> flag_;
 
-  //! List with coordinates of all boundary cells
+  //! List with coordinates of all noslip cells
 
-  std::vector< Vec3<int> > boundaryCells_;
+  std::vector< Vec3<int> > noslipCells_;
 
   //! List with coordinates of all velocity cells
 
@@ -174,11 +184,23 @@ protected:
 
   //! List with velocities for all velocity cells
 
-  std::vector< Vec3<T> > velocities_;
+  std::vector< Vec3<T> > velocityVels_;
+
+  //! List with coordinates of all inflow cells
+
+  std::vector< Vec3<int> > inflowCells_;
+
+  //! List with velocities for all inflow cells
+
+  std::vector< Vec3<T> > inflowVels_;
+
+  //! List with coordinates of all pressure cells
+
+  std::vector< Vec3<int> > pressureCells_;
+
 };
 
 //! Specialization of the the VTK file writer for template type double
-
 //! \note This is necessary as the type needs to be written to the VTK file in
 //!       ASCII and there is no way to get an ASCII representation of the \e
 //!       type of a template paramter
@@ -187,7 +209,6 @@ template<>
 void LBM<double>::writeVtkFile( int timestep );
 
 //! Specialization of the the VTK file writer for template type float
-
 //! \note This is necessary as the type needs to be written to the VTK file in
 //!       ASCII and there is no way to get an ASCII representation of the \e
 //!       type of a template paramter

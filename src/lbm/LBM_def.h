@@ -83,29 +83,41 @@ void LBM<T>::run() {
     T scTime = getTime(start, end);
 
     // Treat no-slip boundary conditions (walls)
-    treatBoundary();
+    treatNoslip();
 
     gettimeofday(&start, NULL);
-    T bTime = getTime(end, start);
+    T nTime = getTime(end, start);
 
     // Treat velocity cells
-    treatVelocities();
+    treatVelocity();
 
     gettimeofday(&end, NULL);
     T vTime = getTime(start, end);
+
+    // Treat inflow boundary conditions
+    treatInflow();
+
+    gettimeofday(&start, NULL);
+    T iTime = getTime(end, start);
+
+    // Treat pressure cells
+    treatPressure();
+
+    gettimeofday(&end, NULL);
+    T pTime = getTime(start, end);
 
     // exchange grids for current and previous time step
     Grid<T, Dim> *gridTmp = grid0_;
     grid0_ = grid1_;
     grid1_ = gridTmp;
 
-    stepTime = scTime + bTime + vTime;
+    stepTime = scTime + nTime + vTime + iTime + pTime;
     totTime += stepTime;
 
     std::cout << "Time step " << step << " of " << maxSteps_ << " took ";
-    std::cout << scTime << " + " << bTime << " + " << vTime << " = ";
-    std::cout << stepTime << "secs -> " << numCells / (stepTime * 1000000);
-    std::cout << " MLUP/s" << std::endl;
+    std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
+    std::cout << " + " << pTime << " = " << stepTime << "secs -> ";
+    std::cout << numCells / (stepTime * 1000000) << " MLUP/s" << std::endl;
 
     if ( vtkStep_ != 0 && step % vtkStep_ == 0 )
       writeVtkFile(step);
@@ -196,7 +208,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
         if ( flag_( x, 1, z ) == UNDEFINED ) {
           flag_( x, 1, z ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( x, 1, z ) );
+          noslipCells_.push_back( Vec3<int>( x, 1, z ) );
         }
       }
     }
@@ -211,7 +223,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
         if ( flag_( x, sizeY - 2, z ) == UNDEFINED ) {
           flag_( x, sizeY - 2, z ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( x, sizeY - 2, z ) );
+          noslipCells_.push_back( Vec3<int>( x, sizeY - 2, z ) );
         }
       }
     }
@@ -226,7 +238,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int y = 2; y < sizeY - 2; ++y ) {
         if ( flag_( 1, y, z ) == UNDEFINED ) {
           flag_( 1, y, z ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( 1, y, z ) );
+          noslipCells_.push_back( Vec3<int>( 1, y, z ) );
         }
       }
     }
@@ -241,7 +253,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int y = 2; y < sizeY - 2; ++y ) {
         if ( flag_( sizeX - 2, y, z ) == UNDEFINED ) {
           flag_( sizeX - 2, y, z ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( sizeX - 2, y, z ) );
+          noslipCells_.push_back( Vec3<int>( sizeX - 2, y, z ) );
         }
       }
     }
@@ -256,7 +268,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
         if ( flag_( x, y, 1 ) == UNDEFINED ) {
           flag_( x, y, 1 ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( x, y, 1 ) );
+          noslipCells_.push_back( Vec3<int>( x, y, 1 ) );
         }
       }
     }
@@ -271,7 +283,7 @@ void LBM<T>::setup( std::string configFileName ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
         if ( flag_( x, y, sizeZ - 2 ) == UNDEFINED ) {
           flag_( x, y, sizeZ - 2 ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
+          noslipCells_.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
         }
       }
     }
@@ -332,7 +344,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
         for ( x = xStart; x <= xEnd; ++x ) {
           assert( flag_( x, y, z ) == UNDEFINED );
           flag_( x, y, z ) = NOSLIP;
-          boundaryCells_.push_back( Vec3<int>( x, y, z ) );
+          noslipCells_.push_back( Vec3<int>( x, y, z ) );
         }
       }
     }
@@ -363,7 +375,65 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
           assert( flag_( x, y, z ) == UNDEFINED );
           flag_( x, y, z ) = VELOCITY;
           velocityCells_.push_back( Vec3<int>( x, y, z ) );
-          velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
+          velocityVels_.push_back( Vec3<T>( u_x, u_y, u_z ) );
+        }
+      }
+    }
+
+  }
+
+  bit = block.findAll( "pressure" );
+
+  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+
+    ConfBlock b = it->second;
+
+    int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
+    int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
+    int yStart = ( y == -1 ) ? b.getParam<int>( "yStart" ) : y;
+    int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
+    int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
+    int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
+            yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
+            zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
+    for ( z = zStart; z <= zEnd; ++z ) {
+      for ( y = yStart; y <= yEnd; ++y ) {
+        for ( x = xStart; x <= xEnd; ++x ) {
+          assert( flag_( x, y, z ) == UNDEFINED );
+          flag_( x, y, z ) = PRESSURE;
+          pressureCells_.push_back( Vec3<int>( x, y, z ) );
+        }
+      }
+    }
+
+  }
+
+  bit = block.findAll( "inflow" );
+
+  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+
+    ConfBlock b = it->second;
+
+    int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
+    int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
+    int yStart = ( y == -1 ) ? b.getParam<int>( "yStart" ) : y;
+    int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
+    int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
+    int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    T u_x = b.getParam<T>( "u_x" );
+    T u_y = b.getParam<T>( "u_y" );
+    T u_z = b.getParam<T>( "u_z" );
+    assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
+            yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
+            zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
+    for ( z = zStart; z <= zEnd; ++z ) {
+      for ( y = yStart; y <= yEnd; ++y ) {
+        for ( x = xStart; x <= xEnd; ++x ) {
+          assert( flag_( x, y, z ) == UNDEFINED );
+          flag_( x, y, z ) = INFLOW;
+          inflowCells_.push_back( Vec3<int>( x, y, z ) );
+          inflowVels_.push_back( Vec3<T>( u_x, u_y, u_z ) );
         }
       }
     }
@@ -507,11 +577,11 @@ inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr 
 }
 
 template<typename T>
-inline void LBM<T>::treatBoundary() {
+inline void LBM<T>::treatNoslip() {
 
   // Iterate over all no-slip boundary cells
   std::vector< Vec3<int> >::iterator iter;
-  for( iter = boundaryCells_.begin(); iter != boundaryCells_.end(); iter++ ) {
+  for( iter = noslipCells_.begin(); iter != noslipCells_.end(); iter++ ) {
 
     // Fetch coordinates of current boundary cell
     int x = (*iter)[0];
@@ -527,7 +597,7 @@ inline void LBM<T>::treatBoundary() {
 }
 
 template<typename T>
-inline void LBM<T>::treatVelocities() {
+inline void LBM<T>::treatVelocity() {
 
   // Iterate over all velocity boundary cells
   for( int i = 0; i < (int) velocityCells_.size(); ++i ) {
@@ -537,9 +607,9 @@ inline void LBM<T>::treatVelocities() {
     int y = velocityCells_[i][1];
     int z = velocityCells_[i][2];
     // Fetch velocity of moving wall
-    T ux = velocities_[i][0];
-    T uy = velocities_[i][1];
-    T uz = velocities_[i][2];
+    T ux = velocityVels_[i][0];
+    T uy = velocityVels_[i][1];
+    T uz = velocityVels_[i][2];
     // Fetch density of current cell
     T rho = 6 * rho_( x, y, z );
     // Set velocity of this cell
@@ -556,6 +626,91 @@ inline void LBM<T>::treatVelocities() {
         = (*grid1_)( x, y, z, f )
           + rho * w[f] * ( ex[op] * ux + ey[op] * uy + ez[op] * uz );
     }
+  }
+}
+
+template<typename T>
+inline void LBM<T>::treatInflow() {
+
+  // Iterate over all inflow boundary cells
+  for( int i = 0; i < (int) inflowCells_.size(); ++i ) {
+
+    // Fetch coordinates of current boundary cell
+    int x = inflowCells_[i][0];
+    int y = inflowCells_[i][1];
+    int z = inflowCells_[i][2];
+    // Fetch inflow velocity
+    T ux = inflowVels_[i][0];
+    T uy = inflowVels_[i][1];
+    T uz = inflowVels_[i][2];
+    // Set velocity of this cell
+    u_( x, y, z, 0 ) = ux;
+    u_( x, y, z, 1 ) = uy;
+    u_( x, y, z, 2 ) = uz;
+
+    // Calculate equilibrium distribution functions with fixed density of 1.0
+    // and set as distribution values of the inflow cell
+    T fc = 1. - 1.5 * ( ux * ux + uy * uy + uz * uz );
+    (*grid1_)( x, y, z, 0 )  = (1./3.)  *   fc; // C
+    (*grid1_)( x, y, z, 1 )  = (1./18.) * ( fc + 3 *   uy        + 4.5 *   uy        *   uy ); // N
+    (*grid1_)( x, y, z, 2 )  = (1./18.) * ( fc + 3 *   ux        + 4.5 *   ux        *   ux ); // E
+    (*grid1_)( x, y, z, 3 )  = (1./18.) * ( fc - 3 *   uy        + 4.5 *   uy        *   uy ); // S
+    (*grid1_)( x, y, z, 4 )  = (1./18.) * ( fc - 3 *   ux        + 4.5 *   ux        *   ux ); // W
+    (*grid1_)( x, y, z, 5 )  = (1./18.) * ( fc + 3 *   uz        + 4.5 *   uz        *   uz ); // T
+    (*grid1_)( x, y, z, 6 )  = (1./18.) * ( fc - 3 *   uz        + 4.5 *   uz        *   uz ); // B
+    (*grid1_)( x, y, z, 7 )  = (1./36.) * ( fc + 3 * ( ux + uy ) + 4.5 * ( ux + uy ) * ( ux + uy ) ); // NE
+    (*grid1_)( x, y, z, 8 )  = (1./36.) * ( fc + 3 * ( ux - uy ) + 4.5 * ( ux - uy ) * ( ux - uy ) ); // SE
+    (*grid1_)( x, y, z, 9 )  = (1./36.) * ( fc - 3 * ( ux + uy ) + 4.5 * ( ux + uy ) * ( ux + uy ) ); // SW
+    (*grid1_)( x, y, z, 10 ) = (1./36.) * ( fc - 3 * ( ux - uy ) + 4.5 * ( ux - uy ) * ( ux - uy ) ); // NW
+    (*grid1_)( x, y, z, 11 ) = (1./36.) * ( fc + 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // TN
+    (*grid1_)( x, y, z, 12 ) = (1./36.) * ( fc + 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // TE
+    (*grid1_)( x, y, z, 13 ) = (1./36.) * ( fc - 3 * ( uy - uz ) + 4.5 * ( uy - uz ) * ( uy - uz ) ); // TS
+    (*grid1_)( x, y, z, 14 ) = (1./36.) * ( fc - 3 * ( ux - uz ) + 4.5 * ( ux - uz ) * ( ux - uz ) ); // TW
+    (*grid1_)( x, y, z, 15 ) = (1./36.) * ( fc + 3 * ( uy - uz ) + 4.5 * ( uy - uz ) * ( uy - uz ) ); // BN
+    (*grid1_)( x, y, z, 16 ) = (1./36.) * ( fc + 3 * ( ux - uz ) + 4.5 * ( ux - uz ) * ( ux - uz ) ); // BE
+    (*grid1_)( x, y, z, 17 ) = (1./36.) * ( fc - 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // BS
+    (*grid1_)( x, y, z, 18 ) = (1./36.) * ( fc - 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // BW
+  }
+}
+
+template<typename T>
+inline void LBM<T>::treatPressure() {
+
+  // Iterate over all pressure boundary cells
+  std::vector< Vec3<int> >::iterator iter;
+  for( iter = pressureCells_.begin(); iter != pressureCells_.end(); iter++ ) {
+
+    // Fetch coordinates of current boundary cell
+    int x = (*iter)[0];
+    int y = (*iter)[1];
+    int z = (*iter)[2];
+    // Fetch velocity of current boundary cell
+    T ux = u_( x, y, z, 0 );
+    T uy = u_( x, y, z, 1 );
+    T uz = u_( x, y, z, 2 );
+
+    // Calculate pressure corrected equilibrium distribution functions for
+    // atmospheric pressure and set as distribution values of the pressure cell
+    T fc = 2. - 3. * ( ux * ux + uy * uy + uz * uz );
+    (*grid1_)( x, y, z, 0 )  = (1./3.)  *   fc                                    - (*grid1_)( x, y, z, finv[0] ); // C
+    (*grid1_)( x, y, z, 1 )  = (1./18.) * ( fc + 9. *   uy        *   uy )        - (*grid1_)( x, y, z, finv[1] ); // N
+    (*grid1_)( x, y, z, 2 )  = (1./18.) * ( fc + 9. *   ux        *   ux )        - (*grid1_)( x, y, z, finv[2] ); // E
+    (*grid1_)( x, y, z, 3 )  = (1./18.) * ( fc + 9. *   uy        *   uy )        - (*grid1_)( x, y, z, finv[3] ); // S
+    (*grid1_)( x, y, z, 4 )  = (1./18.) * ( fc + 9. *   ux        *   ux )        - (*grid1_)( x, y, z, finv[4] ); // W
+    (*grid1_)( x, y, z, 5 )  = (1./18.) * ( fc + 9. *   uz        *   uz )        - (*grid1_)( x, y, z, finv[5] ); // T
+    (*grid1_)( x, y, z, 6 )  = (1./18.) * ( fc + 9. *   uz        *   uz )        - (*grid1_)( x, y, z, finv[6] ); // B
+    (*grid1_)( x, y, z, 7 )  = (1./36.) * ( fc + 9. * ( ux + uy ) * ( ux + uy ) ) - (*grid1_)( x, y, z, finv[7] ); // NE
+    (*grid1_)( x, y, z, 8 )  = (1./36.) * ( fc + 9. * ( ux - uy ) * ( ux - uy ) ) - (*grid1_)( x, y, z, finv[8] ); // SE
+    (*grid1_)( x, y, z, 9 )  = (1./36.) * ( fc + 9. * ( ux + uy ) * ( ux + uy ) ) - (*grid1_)( x, y, z, finv[9] ); // SW
+    (*grid1_)( x, y, z, 10 ) = (1./36.) * ( fc + 9. * ( ux - uy ) * ( ux - uy ) ) - (*grid1_)( x, y, z, finv[10] ); // NW
+    (*grid1_)( x, y, z, 11 ) = (1./36.) * ( fc + 9. * ( uy + uz ) * ( uy + uz ) ) - (*grid1_)( x, y, z, finv[11] ); // TN
+    (*grid1_)( x, y, z, 12 ) = (1./36.) * ( fc + 9. * ( ux + uz ) * ( ux + uz ) ) - (*grid1_)( x, y, z, finv[12] ); // TE
+    (*grid1_)( x, y, z, 13 ) = (1./36.) * ( fc + 9. * ( uy - uz ) * ( uy - uz ) ) - (*grid1_)( x, y, z, finv[13] ); // TS
+    (*grid1_)( x, y, z, 14 ) = (1./36.) * ( fc + 9. * ( ux - uz ) * ( ux - uz ) ) - (*grid1_)( x, y, z, finv[14] ); // TW
+    (*grid1_)( x, y, z, 15 ) = (1./36.) * ( fc + 9. * ( uy - uz ) * ( uy - uz ) ) - (*grid1_)( x, y, z, finv[15] ); // BN
+    (*grid1_)( x, y, z, 16 ) = (1./36.) * ( fc + 9. * ( ux - uz ) * ( ux - uz ) ) - (*grid1_)( x, y, z, finv[16] ); // BE
+    (*grid1_)( x, y, z, 17 ) = (1./36.) * ( fc + 9. * ( uy + uz ) * ( uy + uz ) ) - (*grid1_)( x, y, z, finv[17] ); // BS
+    (*grid1_)( x, y, z, 18 ) = (1./36.) * ( fc + 9. * ( ux + uz ) * ( ux + uz ) ) - (*grid1_)( x, y, z, finv[18] ); // BW
   }
 }
 
