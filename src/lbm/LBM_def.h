@@ -128,42 +128,39 @@ void LBM<T>::setup( std::string configFileName ) {
   try {
 
     ConfParser p;
-    ConfBlock* base = p.parse( configFileName );
+    ConfBlock base = p.parse( configFileName );
     std::cout << "Parsed configuration file " << configFileName << std::endl;
 
     // Read the parameters from the config file
 
-    ConfBlockIterator bit = base->findRec( "domain" );
-    if ( bit == base->end( "domain" ) ) {
+    ConfBlock* paramBlock = base.find( "domain" );
+    if ( paramBlock == NULL ) {
       throw "No domain size given.";
     }
-    ConfBlock paramBlock = *bit;
-    int sizeX = paramBlock.getParam<int>( "sizeX" );
-    int sizeY = paramBlock.getParam<int>( "sizeY" );
-    int sizeZ = paramBlock.getParam<int>( "sizeZ" );
+    int sizeX = paramBlock->getParam<int>( "sizeX" );
+    int sizeY = paramBlock->getParam<int>( "sizeY" );
+    int sizeZ = paramBlock->getParam<int>( "sizeZ" );
     std::cout << "Read domain specification:" << std::endl;
     std::cout << "sizeX : " << sizeX << std::endl;
     std::cout << "sizeY : " << sizeY << std::endl;
     std::cout << "sizeZ : " << sizeZ << std::endl;
 
-    bit = base->findRec( "parameters" );
-    if ( bit == base->end( "parameters" ) ) {
+    paramBlock = base.find( "parameters" );
+    if ( paramBlock == NULL ) {
       throw "No parameters given.";
     }
-    paramBlock = *bit;
-    omega_ = paramBlock.getParam<T>( "omega" );
-    cSmagorinsky_ = paramBlock.getParam<T>( "cSmagorinsky" );
-    maxSteps_ = paramBlock.getParam<int>( "maxSteps" );
+    omega_ = paramBlock->getParam<T>( "omega" );
+    cSmagorinsky_ = paramBlock->getParam<T>( "cSmagorinsky" );
+    maxSteps_ = paramBlock->getParam<int>( "maxSteps" );
     std::cout << "Read parameter specification:" << std::endl;
     std::cout << "omega                : " << omega_ << std::endl;
     std::cout << "Smagorinsky constant : " << cSmagorinsky_ << std::endl;
     std::cout << "Number of steps      : " << maxSteps_ << std::endl;
 
-    bit = base->findRec( "vtk" );
-    if ( bit != base->end( "vtk" ) ) {
-      paramBlock = *bit;
-      vtkStep_ = paramBlock.getParam<int>( "vtkStep" );
-      vtkFileName_ = paramBlock.getParam<std::string>( "vtkFileName" );
+    paramBlock = base.find( "vtk" );
+    if ( paramBlock != NULL ) {
+      vtkStep_ = paramBlock->getParam<int>( "vtkStep" );
+      vtkFileName_ = paramBlock->getParam<std::string>( "vtkFileName" );
       std::cout << "VTK output specification:" << std::endl;
       std::cout << "VTK step modulo           : " << vtkStep_ << std::endl;
       std::cout << "VTK output file base name : " << vtkFileName_ << std::endl;
@@ -184,52 +181,16 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "Set up the boundaries..." << std::endl;
 
     // Set up the boundaries
-    bit = base->findRec( "boundaries" );
-    if ( bit == base->end( "boundaries" ) ) {
+    paramBlock = base.find( "boundaries" );
+    if ( paramBlock == NULL ) {
       throw "No boundary description given.";
     }
-    paramBlock = *bit;
 
     std::cout << "South..." << std::endl;
 
     // South
-    bit = paramBlock.findRec( "south" );
-    if ( bit != paramBlock.end( "south" ) ) {
-      ConfBlock* bd = (*bit).descend();
-      for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int xStart = b.getParam<int>( "xStart" );
-        int xEnd   = b.getParam<int>( "xEnd" );
-        int zStart = b.getParam<int>( "zStart" );
-        int zEnd   = b.getParam<int>( "zEnd" );
-        assert( xStart > 0 && xEnd < sizeX - 1 && zStart > 1 && zEnd < sizeZ - 2 );
-        if ( b.getName() == "noslip" ) {
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, 1, z ) == UNDEFINED );
-              flag_( x, 1, z ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( x, 1, z ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, 1, z ) == UNDEFINED );
-              flag_( x, 1, z ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( x, 1, z ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (south)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    ConfBlock* boundBlock = paramBlock->find( "south" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, 1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
@@ -243,43 +204,8 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "North..." << std::endl;
 
     // North
-    bit = paramBlock.findRec( "north" );
-    if ( bit != paramBlock.end( "north" ) ) {
-      ConfBlock* bd = (*bit).descend();
-        for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int xStart = b.getParam<int>( "xStart" );
-        int xEnd   = b.getParam<int>( "xEnd" );
-        int zStart = b.getParam<int>( "zStart" );
-        int zEnd   = b.getParam<int>( "zEnd" );
-        assert( xStart > 0 && xEnd < sizeX - 1 && zStart > 1 && zEnd < sizeZ - 2 );
-        if ( b.getName() == "noslip" ) {
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, sizeY - 2, z ) == UNDEFINED );
-              flag_( x, sizeY - 2, z ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( x, sizeY - 2, z ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, sizeY - 2, z ) == UNDEFINED );
-              flag_( x, sizeY - 2, z ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( x, sizeY - 2, z ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (north)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    boundBlock = paramBlock->find( "north" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, sizeY - 2, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
@@ -293,43 +219,8 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "West..." << std::endl;
 
     // West
-    bit = paramBlock.findRec( "west" );
-    if ( bit != paramBlock.end( "west" ) ) {
-      ConfBlock* bd = (*bit).descend();
-        for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int yStart = b.getParam<int>( "yStart" );
-        int yEnd   = b.getParam<int>( "yEnd" );
-        int zStart = b.getParam<int>( "zStart" );
-        int zEnd   = b.getParam<int>( "zEnd" );
-        assert( yStart > 1 && yEnd < sizeY - 2 && zStart > 1 && zEnd < sizeZ - 2 );
-        if ( b.getName() == "noslip" ) {
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int y = yStart; y <= yEnd; ++y ) {
-              assert( flag_( 1, y, z ) == UNDEFINED );
-              flag_( 1, y, z ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( 1, y, z ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int y = yStart; y <= yEnd; ++y ) {
-              assert( flag_( 1, y, z ) == UNDEFINED );
-              flag_( 1, y, z ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( 1, y, z ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (west)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    boundBlock = paramBlock->find( "west" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, 1, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
       for ( int y = 2; y < sizeY - 2; ++y ) {
@@ -343,43 +234,8 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "East..." << std::endl;
 
     // East
-    bit = paramBlock.findRec( "east" );
-    if ( bit != paramBlock.end( "east" ) ) {
-      ConfBlock* bd = (*bit).descend();
-        for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int yStart = b.getParam<int>( "yStart" );
-        int yEnd   = b.getParam<int>( "yEnd" );
-        int zStart = b.getParam<int>( "zStart" );
-        int zEnd   = b.getParam<int>( "zEnd" );
-        assert( yStart > 1 && yEnd < sizeY - 2 && zStart > 1 && zEnd < sizeZ - 2 );
-        if ( b.getName() == "noslip" ) {
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int y = yStart; y <= yEnd; ++y ) {
-              assert( flag_( sizeX - 2, y, z ) == UNDEFINED );
-              flag_( sizeX - 2, y, z ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( sizeX - 2, y, z ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int z = zStart; z <= zEnd; ++z ) {
-            for ( int y = yStart; y <= yEnd; ++y ) {
-              assert( flag_( sizeX - 2, y, z ) == UNDEFINED );
-              flag_( sizeX - 2, y, z ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( sizeX - 2, y, z ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (east)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    boundBlock = paramBlock->find( "east" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, sizeX - 2, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
       for ( int y = 2; y < sizeY - 2; ++y ) {
@@ -393,43 +249,8 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "Bottom..." << std::endl;
 
     // Bottom
-    bit = paramBlock.findRec( "bottom" );
-    if ( bit != paramBlock.end( "bottom" ) ) {
-      ConfBlock* bd = (*bit).descend();
-        for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int xStart = b.getParam<int>( "xStart" );
-        int xEnd   = b.getParam<int>( "xEnd" );
-        int yStart = b.getParam<int>( "yStart" );
-        int yEnd   = b.getParam<int>( "yEnd" );
-        assert( xStart > 0 && xEnd < sizeX - 1 && yStart > 0 && yEnd < sizeY - 1 );
-        if ( b.getName() == "noslip" ) {
-          for ( int y = yStart; y <= yEnd; ++y ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, y, 1 ) == UNDEFINED );
-              flag_( x, y, 1 ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( x, y, 1 ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int y = yStart; y <= yEnd; ++y ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, y, 1 ) == UNDEFINED );
-              flag_( x, y, 1 ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( x, y, 1 ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (bottom)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    boundBlock = paramBlock->find( "bottom" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, 1 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
@@ -443,43 +264,8 @@ void LBM<T>::setup( std::string configFileName ) {
     std::cout << "Top..." << std::endl;
 
     // Top
-    bit = paramBlock.findRec( "top" );
-    if ( bit != paramBlock.end( "top" ) ) {
-      ConfBlock* bd = (*bit).descend();
-        for ( ConfBlockIterator it = bd->begin(); it != bd->end(); ++it ) {
-        ConfBlock b = *it;
-        int xStart = b.getParam<int>( "xStart" );
-        int xEnd   = b.getParam<int>( "xEnd" );
-        int yStart = b.getParam<int>( "yStart" );
-        int yEnd   = b.getParam<int>( "yEnd" );
-        assert( xStart > 0 && xEnd < sizeX - 1 && yStart > 0 && yEnd < sizeY - 1 );
-        if ( b.getName() == "noslip" ) {
-          for ( int y = yStart; y <= yEnd; ++y ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, y, sizeZ - 2 ) == UNDEFINED );
-              flag_( x, y, sizeZ - 2 ) = NOSLIP;
-              boundaryCells_.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
-            }
-          }
-        } else if ( b.getName() == "velocity" ) {
-          T u_x = b.getParam<T>( "u_x" );
-          T u_y = b.getParam<T>( "u_y" );
-          T u_z = b.getParam<T>( "u_z" );
-          for ( int y = yStart; y <= yEnd; ++y ) {
-            for ( int x = xStart; x <= xEnd; ++x ) {
-              assert( flag_( x, y, sizeZ - 2 ) == UNDEFINED );
-              flag_( x, y, sizeZ - 2 ) = VELOCITY;
-              velocityCells_.push_back( Vec3<int>( x, y, sizeZ - 2 ) );
-              velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
-            }
-          }
-        } else {
-          std::cerr << "Unknown boundary type " << b.getName() << " (top)" << std::endl;
-          continue;
-        }
-
-      }
-    }
+    boundBlock = paramBlock->find( "top" );
+    if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, sizeZ - 2 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {
       for ( int x = 1; x <= sizeX - 2; ++x ) {
@@ -512,12 +298,7 @@ void LBM<T>::setup( std::string configFileName ) {
          for ( int i = 0; i < Dim; ++i )
            (*grid1_)( x, y, z, i ) = w[i];
 
-//    delete base;
-
-  } catch ( BadSyntax e ) {
-    std::cerr << e.what() << std::endl;
-    exit( -1 );
-  } catch ( ParameterNotFound e ) {
+  } catch ( std::exception e ) {
     std::cerr << e.what() << std::endl;
     exit( -1 );
   } catch ( const char* e ) {
@@ -526,6 +307,68 @@ void LBM<T>::setup( std::string configFileName ) {
   }
 
   std::cout << "Setup finished!" << std::endl;
+}
+
+template<typename T>
+inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
+
+  std::pair< ConfBlock::bIter, ConfBlock::bIter > bit = block.findAll( "noslip" );
+
+  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+
+    ConfBlock b = it->second;
+
+    int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
+    int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
+    int yStart = ( y == -1 ) ? b.getParam<int>( "yStart" ) : y;
+    int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
+    int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
+    int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
+            yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
+            zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
+    for ( z = zStart; z <= zEnd; ++z ) {
+      for ( y = yStart; y <= yEnd; ++y ) {
+        for ( x = xStart; x <= xEnd; ++x ) {
+          assert( flag_( x, y, z ) == UNDEFINED );
+          flag_( x, y, z ) = NOSLIP;
+          boundaryCells_.push_back( Vec3<int>( x, y, z ) );
+        }
+      }
+    }
+
+  }
+
+  bit = block.findAll( "velocity" );
+
+  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+
+    ConfBlock b = it->second;
+
+    int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
+    int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
+    int yStart = ( y == -1 ) ? b.getParam<int>( "yStart" ) : y;
+    int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
+    int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
+    int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    T u_x = b.getParam<T>( "u_x" );
+    T u_y = b.getParam<T>( "u_y" );
+    T u_z = b.getParam<T>( "u_z" );
+    assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
+            yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
+            zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
+    for ( z = zStart; z <= zEnd; ++z ) {
+      for ( y = yStart; y <= yEnd; ++y ) {
+        for ( x = xStart; x <= xEnd; ++x ) {
+          assert( flag_( x, y, z ) == UNDEFINED );
+          flag_( x, y, z ) = VELOCITY;
+          velocityCells_.push_back( Vec3<int>( x, y, z ) );
+          velocities_.push_back( Vec3<T>( u_x, u_y, u_z ) );
+        }
+      }
+    }
+
+  }
 }
 
 template<typename T>

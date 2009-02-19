@@ -462,6 +462,7 @@
 </profile>
 </scannerConfigBuildInfo>
 </storageModule>
+
 <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
 <buildTargets>
 <target name="CMake" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
@@ -531,6 +532,22 @@
 <buildCommand>make</buildCommand>
 <buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
 <buildTarget>doc</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="confparser" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>confparser</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="parsertest" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>parsertest</buildTarget>
 <stopOnError>true</stopOnError>
 <useDefaultCommand>true</useDefaultCommand>
 <runAllBuilders>true</runAllBuilders>
@@ -997,6 +1014,7 @@
 </profile>
 </scannerConfigBuildInfo>
 </storageModule>
+
 <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
 <buildTargets>
 <target name="CMake" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
@@ -1066,6 +1084,22 @@
 <buildCommand>make</buildCommand>
 <buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
 <buildTarget>doc</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="confparser" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>confparser</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="parsertest" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>parsertest</buildTarget>
 <stopOnError>true</stopOnError>
 <useDefaultCommand>true</useDefaultCommand>
 <runAllBuilders>true</runAllBuilders>
@@ -1548,6 +1582,7 @@
 </profile>
 </scannerConfigBuildInfo>
 </storageModule>
+
 <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
 <buildTargets>
 <target name="CMake" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
@@ -1617,6 +1652,22 @@
 <buildCommand>make</buildCommand>
 <buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
 <buildTarget>doc</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="confparser" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>confparser</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="parsertest" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>parsertest</buildTarget>
 <stopOnError>true</stopOnError>
 <useDefaultCommand>true</useDefaultCommand>
 <runAllBuilders>true</runAllBuilders>
@@ -2083,6 +2134,7 @@
 </profile>
 </scannerConfigBuildInfo>
 </storageModule>
+
 <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets">
 <buildTargets>
 <target name="CMake" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
@@ -2152,6 +2204,22 @@
 <buildCommand>make</buildCommand>
 <buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
 <buildTarget>doc</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="confparser" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>confparser</buildTarget>
+<stopOnError>true</stopOnError>
+<useDefaultCommand>true</useDefaultCommand>
+<runAllBuilders>true</runAllBuilders>
+</target>
+<target name="parsertest" path="" targetID="org.eclipse.cdt.build.MakeTargetBuilder">
+<buildCommand>make</buildCommand>
+<buildArguments>-C ${ProjDirPath}/${ConfigName}  -j2</buildArguments>
+<buildTarget>parsertest</buildTarget>
 <stopOnError>true</stopOnError>
 <useDefaultCommand>true</useDefaultCommand>
 <runAllBuilders>true</runAllBuilders>

@@ -75,6 +75,8 @@ protected:
 
   void setup( std::string configFileName );
 
+  inline void setupBoundary( ConfBlock& block, int x, int y, int z );
+
   //! Get the time difference between two measurements
 
   //! \param[in] start Start time of measurement as return by \e gettimeofday

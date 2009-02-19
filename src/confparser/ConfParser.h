@@ -8,7 +8,10 @@
 #define CONFPARSER_H_
 
 #include <cstring>
-#include <exception>
+#include <stdexcept>
+#include <boost/lexical_cast.hpp>
+
+#include "ConfBlock.h"
 
 //! Common namespace for all classes related to parsing of configuration files
 
@@ -19,7 +22,7 @@ namespace confparser {
   //! Is capable of providing information about the file  and the line where
   //! the syntax error occured as well as a description of the error
 
-  class BadSyntax : public std::exception {
+  class BadSyntax : public std::logic_error {
 
   public:
 
@@ -31,45 +34,37 @@ namespace confparser {
 
     //! Sets no specific information
 
-    BadSyntax() throw() : file_( "" ), line_( -1 ), error_( "" ) {}
+    BadSyntax() throw()
+        : std::logic_error( "Syntax error occured" ),
+          file_( "" ),
+          line_( -1 ),
+          error_( "" ) {}
 
     //! Constructor
 
     //! Sets information about file and line of error occurrence as well as an
     //! error description
 
-    BadSyntax( const char* file, const int line, const char* error ) throw()
-        : file_( file ), line_( line ), error_( error ), what_( 0 ) {
-      int buff_size = strlen( file_ ) + strlen( error_ ) + 50;
-      what_ = new char[buff_size];
-      std::snprintf( what_, buff_size,
-          "Syntax error occurred in file %s on line %i: %s", file_, line_, error_ );
-    }
+    BadSyntax( const std::string file, const int line, const std::string error ) throw()
+        : std::logic_error( "Syntax error occured in file " + file + " on line "
+            + boost::lexical_cast<std::string>( line ) + ": " + error ),
+          file_( file ),
+          line_( line ),
+          error_( error ) {}
 
     //! Destructor
 
-    virtual ~BadSyntax() throw() {
-      delete [] file_;
-      delete [] error_;
-      delete [] what_;
-    }
+    virtual ~BadSyntax() throw() {}
 
     // ======= //
     // Getters //
     // ======= //
 
-    //! Returns information about the syntax error
-
-    //! \return Information about the syntax error incorporating file and line
-    //! of the error as well as the description
-
-    virtual const char* what() const throw() { return what_; }
-
     //! Returns the file name
 
     //! \return Name of the file the syntax error occurred
 
-    const char* getFileName() const throw() { return file_; }
+    const char* getFileName() const throw() { return file_.c_str(); }
 
     //! Returns the line of the error
 
@@ -81,7 +76,7 @@ namespace confparser {
 
     //! \return Description of the error
 
-    const char* getErrorMsg() const throw() { return error_; }
+    const char* getErrorMsg() const throw() { return error_.c_str(); }
 
   private:
 
@@ -91,7 +86,7 @@ namespace confparser {
 
     //! File where with erroneous syntax
 
-    const char* file_;
+    const std::string file_;
 
     //! Line of the syntax error
 
@@ -99,11 +94,7 @@ namespace confparser {
 
     //! Description of the syntax error
 
-    const char* error_;
-
-    //! Message returned by what()
-
-    char* what_;
+    const std::string error_;
 
   };
 
@@ -134,7 +125,7 @@ namespace confparser {
   //! The parsing result is a tree structure of ConfBlock objects and the actual
   //! key-value pairs are stored in a std::map
 
-  class ConfBlock;
+//  class ConfBlock;
 
   class ConfParser {
 
@@ -146,9 +137,9 @@ namespace confparser {
 
     //! Constructor
 
-    //! Does nothing
+    //! Initializes root as empty block
 
-    ConfParser() {}
+    ConfParser() : outermost_() {}
 
     //! Destructor
 
@@ -165,7 +156,29 @@ namespace confparser {
     //! \param[in] configFileName Path to the configuration file to parse
     //! \throw BadSyntax
 
-    ConfBlock* parse( std::string configFileName ) throw( BadSyntax );
+    ConfBlock& parse( std::string configFileName ) throw( BadSyntax );
+
+  protected:
+
+    // ========================== //
+    // Protected helper functions //
+    // ========================== //
+
+    //! Recursively parse a specific block
+
+    //! \param[in] currBlock      Pointer to current block
+    //! \param[in] level          Nesting depth of current block
+    //! \param[in] nLine          Current line in the configuration file
+    //! \param[in] configFile     Stream to write out to
+    //! \param[in] configFileName Name of the configuration file parsed
+
+    int parse_rec( ConfBlock* currBlock,
+                   int level,
+                   int nLine,
+                   std::ifstream& configFile,
+                   const std::string& configFileName );
+
+    ConfBlock outermost_;
 
   };
 

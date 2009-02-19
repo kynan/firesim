@@ -8,7 +8,7 @@ IF( NOT Boost_FOUND )
     MESSAGE( FATAL_ERROR "Boost library not found!" )
 ENDIF( NOT Boost_FOUND )
 
-ADD_LIBRARY( confparser ConfBlock.cpp ConfBlockIterator.cpp ConfParser.cpp )
+ADD_LIBRARY( confparser ConfBlock.cpp ConfParser.cpp )
 TARGET_LINK_LIBRARIES( confparser ${Boost_LIBRARIES} )
 
 ADD_EXECUTABLE( parsertest parsertest.cpp )

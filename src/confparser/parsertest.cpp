@@ -25,10 +25,9 @@ int main( int argc, char** argv ) {
 
   for ( int i = 1; i < argc; ++i ) {
     try {
-      ConfBlock* b = p.parse( argv[i] );
-      b->writeConfigFile( string( argv[i] ) + ".out" );
-      delete b;
-    } catch ( BadSyntax e ) {
+      ConfBlock& b = p.parse( argv[i] );
+      b.writeConfigFile( string( argv[i] ) + ".out" );
+    } catch ( std::exception& e ) {
       cerr << e.what() << endl;
     }
   }

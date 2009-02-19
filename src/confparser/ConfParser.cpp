@@ -16,94 +16,87 @@ using namespace boost;
 
 namespace confparser {
 
-  ConfBlock* ConfParser::parse( string configFileName ) throw( BadSyntax ) {
+ConfBlock& ConfParser::parse( string configFileName ) throw( BadSyntax ) {
 
-    // Open configuration file
-    ifstream configFile( configFileName.c_str() );
-    if ( !configFile ) throw BadSyntax( configFileName.c_str(), 0,
-        "Configuration file does not exist" );
+  // Open configuration file
+  ifstream configFile( configFileName.c_str(), ios::out );
+  if ( !configFile ) throw BadSyntax( configFileName, 0,
+      "Specified configuration file does not exist" );
 
-    // Create default outermost block
-    ConfBlock* outermost = new ConfBlock( "__default" );
-    // ... which is of level 0
-    int level = 0;
-    // Pointer to currently processed block
-    ConfBlock* currBlock = outermost;
-    // Pointer to previous child of parent block
-    ConfBlock* prevChild = NULL;
+#ifdef DEBUG
+    cout << "Parsing configuration file " << configFileName << endl;
+#endif
 
-    // Read in config file linewise
-    string l;
-    int nLine = 0;
-    while ( getline( configFile, l ) ) {
+  parse_rec( &outermost_, 0, 0, configFile, configFileName );
 
-      ++nLine;
+  return outermost_;
 
-      // Remove leading and trailing whitespace
-      trim( l );
-      // If the line contained only whitspace we can skip it
-      if ( l.empty() ) continue;
+}
 
-      // Ignore lines beginning with # or // as comments
-      if ( starts_with( l, "#") || starts_with( l, "//" ) ) continue;
+int ConfParser::parse_rec( ConfBlock* currBlock,
+                           int level,
+                           int nLine,
+                           ifstream& configFile,
+                           const string& configFileName ) {
 
-      // Check whether it is the end of a block
-      if ( l.length() == 1 && l[0] == '}' ) {
+  // Read in config file linewise
+  string l;
+  while ( getline( configFile, l ) ) {
 
-        // Syntax error if we are at level 0
-        if ( level == 0 ) {
-          throw BadSyntax( configFileName.c_str(), nLine,
-              "Found closing block at outermost level" );
-        }
+    ++nLine;
 
-        assert( currBlock->parent_ != NULL );
-        prevChild = currBlock;
-        currBlock = currBlock->parent_;
-        level--;
-        continue;
+    // Remove leading and trailing whitespace
+    trim( l );
+    // If the line contained only whitspace we can skip it
+    if ( l.empty() ) continue;
+
+    // Ignore lines beginning with # or // as comments
+    if ( starts_with( l, "#") || starts_with( l, "//" ) ) continue;
+
+    // Check whether it is the end of a block
+    if ( l.length() == 1 && l[0] == '}' ) {
+
+      // Syntax error if we are at level 0
+      if ( level == 0 ) {
+        throw BadSyntax( configFileName, nLine,
+            "Found closing block at outermost level" );
       }
 
-      cmatch m;
-      regex blockBegin( "^(\\w+)\\s*\\{$" );
-      regex keyVal( "^(\\w+)\\s+(.*);" );
+      return nLine;
+    }
 
-      // Check whether it is the beginning of a new block
-      if ( regex_match( l.c_str(), m, blockBegin ) ) {
+    cmatch m;
+    regex blockBegin( "^(\\w+)\\s*\\{$" );
+    regex keyVal( "^(\\w+)\\s+(.*);" );
 
-        ++level;
-        ConfBlock* newBlock = new ConfBlock( m[1], level, currBlock );
+    // Check whether it is the beginning of a new block
+    if ( regex_match( l.c_str(), m, blockBegin ) ) {
 
-        // Check if the current block has no child yet, then the new block
-        // is the current block's first child
-        if ( currBlock->child_ == NULL ) {
-          currBlock->child_ = newBlock;
-        // Else the new block is the sibling of the previous child
-        } else {
-          assert( prevChild != NULL );
-          prevChild->sibling_ = newBlock;
-        }
-        currBlock = newBlock;
+#ifdef DEBUG
+        cout << "Adding Block " << m[1] << " at level " << level << " (line " << nLine << ")" << endl;
+#endif
 
-      // Check whether it is a key / value pair
-      } else if ( regex_match( l.c_str(), m, keyVal ) ) {
+      nLine = parse_rec( &currBlock->addChild( m[1] ), level + 1, nLine, configFile, configFileName );
 
-        currBlock->addParam( m[1], m[2] );
+    // Check whether it is a key / value pair
+    } else if ( regex_match( l.c_str(), m, keyVal ) ) {
 
-      // Else we have a malformed expression and throw an exception
-      } else {
+      currBlock->addParam( m[1], m[2] );
 
-        throw BadSyntax( configFileName.c_str(), nLine, "Malformed expression" );
+    // Else we have a malformed expression and throw an exception
+    } else {
 
-      }
+      throw BadSyntax( configFileName, nLine, "Malformed expression" );
 
     }
 
-    // check if we are at outermost level again at the end
-    if ( level != 0 )
-      throw BadSyntax( configFileName.c_str(), nLine, "Unexpected end of configuration file" );
-
-    return outermost;
-
   }
 
+  // check if we are at outermost level again at the end
+  if ( level != 0 )
+    throw BadSyntax( configFileName, nLine, "Unexpected end of configuration file" );
+
+  return nLine;
 }
+
+} // namespace
