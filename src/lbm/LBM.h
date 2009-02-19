@@ -31,7 +31,8 @@ enum Flag {
   NOSLIP    = 2,
   VELOCITY  = 3,
   INFLOW    = 4,
-  PRESSURE  = 5
+  OUTFLOW   = 5,
+  PRESSURE  = 6
 };
 
 //! Lattice Boltzmann Method fluid solver
@@ -118,6 +119,10 @@ protected:
 
   inline void treatInflow();
 
+  //! Treat the outflow boundary cells
+
+  inline void treatOutflow();
+
   //! Treat the outflow boundary cells with fixed athmospheric pressure
 
   inline void treatPressure();
@@ -193,6 +198,14 @@ protected:
   //! List with velocities for all inflow cells
 
   std::vector< Vec3<T> > inflowVels_;
+
+  //! List with coordinates of all outflow cells
+
+  std::vector< Vec3<int> > outflowCells_;
+
+  //! List with outflow directions for all outflow cells
+
+  std::vector< Vec3<int> > outflowDirs_;
 
   //! List with coordinates of all pressure cells
 

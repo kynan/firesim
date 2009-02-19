@@ -100,24 +100,31 @@ void LBM<T>::run() {
     gettimeofday(&start, NULL);
     T iTime = getTime(end, start);
 
+    // Treat outflow boundary conditions
+    treatOutflow();
+
+    gettimeofday(&end, NULL);
+    T oTime = getTime(start, end);
+
     // Treat pressure cells
     treatPressure();
 
-    gettimeofday(&end, NULL);
-    T pTime = getTime(start, end);
+    gettimeofday(&start, NULL);
+    T pTime = getTime(end, start);
 
     // exchange grids for current and previous time step
     Grid<T, Dim> *gridTmp = grid0_;
     grid0_ = grid1_;
     grid1_ = gridTmp;
 
-    stepTime = scTime + nTime + vTime + iTime + pTime;
+    stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
     totTime += stepTime;
 
     std::cout << "Time step " << step << " of " << maxSteps_ << " took ";
     std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
-    std::cout << " + " << pTime << " = " << stepTime << "secs -> ";
-    std::cout << numCells / (stepTime * 1000000) << " MLUP/s" << std::endl;
+    std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
+    std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
+    std::cout << std::endl;
 
     if ( vtkStep_ != 0 && step % vtkStep_ == 0 )
       writeVtkFile(step);
@@ -439,6 +446,37 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
     }
 
   }
+
+  bit = block.findAll( "outflow" );
+
+  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+
+    ConfBlock b = it->second;
+
+    int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
+    int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
+    int yStart = ( y == -1 ) ? b.getParam<int>( "yStart" ) : y;
+    int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
+    int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
+    int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    int xDir   = ( x == -1 ) ? 0 : ( ( x > 1 ) ? -1 : 1 );
+    int yDir   = ( y == -1 ) ? 0 : ( ( y > 1 ) ? -1 : 1 );
+    int zDir   = ( z == -1 ) ? 0 : ( ( z > 1 ) ? -1 : 1 );
+    assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
+            yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
+            zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
+    for ( z = zStart; z <= zEnd; ++z ) {
+      for ( y = yStart; y <= yEnd; ++y ) {
+        for ( x = xStart; x <= xEnd; ++x ) {
+          assert( flag_( x, y, z ) == UNDEFINED );
+          flag_( x, y, z ) = OUTFLOW;
+          outflowCells_.push_back( Vec3<int>( x, y, z ) );
+          outflowDirs_.push_back( Vec3<int>( xDir, yDir, zDir ) );
+        }
+      }
+    }
+
+  }
 }
 
 template<typename T>
@@ -670,6 +708,29 @@ inline void LBM<T>::treatInflow() {
     (*grid1_)( x, y, z, 16 ) = (1./36.) * ( fc + 3 * ( ux - uz ) + 4.5 * ( ux - uz ) * ( ux - uz ) ); // BE
     (*grid1_)( x, y, z, 17 ) = (1./36.) * ( fc - 3 * ( uy + uz ) + 4.5 * ( uy + uz ) * ( uy + uz ) ); // BS
     (*grid1_)( x, y, z, 18 ) = (1./36.) * ( fc - 3 * ( ux + uz ) + 4.5 * ( ux + uz ) * ( ux + uz ) ); // BW
+  }
+}
+
+template<typename T>
+inline void LBM<T>::treatOutflow() {
+
+  // Iterate over all outflow boundary cells
+  for( int i = 0; i < (int) outflowCells_.size(); ++i ) {
+
+    // Fetch coordinates of current boundary cell
+    int x = outflowCells_[i][0];
+    int y = outflowCells_[i][1];
+    int z = outflowCells_[i][2];
+    // Fetch outflow direction
+    int xDir = outflowDirs_[i][0];
+    int yDir = outflowDirs_[i][1];
+    int zDir = outflowDirs_[i][2];
+
+    // Go over all distribution values, and copy the distribution values from
+    // the neighboring cell in outflow direction
+    for ( int f = 1; f < Dim; ++f ) {
+      (*grid1_)( x - xDir, y - yDir, z - zDir, f ) = (*grid1_)( x, y, z, f );
+    }
   }
 }
 
