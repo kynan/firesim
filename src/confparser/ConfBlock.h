@@ -81,11 +81,13 @@ private:
 
 class ConfBlock {
 
-  // Declare ConfParser as friend class
+  //! Declare ConfParser as friend class to give it access to internals
 
   friend class ConfParser;
 
 public:
+
+  //! Iterator type for the children of the block
 
   typedef std::multimap< std::string, ConfBlock >::iterator bIter;
 

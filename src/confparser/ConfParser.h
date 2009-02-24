@@ -178,6 +178,8 @@ namespace confparser {
                    std::ifstream& configFile,
                    const std::string& configFileName );
 
+    //! Root block of the parse tree that is built, will be returned by parse
+
     ConfBlock outermost_;
 
   };

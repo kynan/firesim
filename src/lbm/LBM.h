@@ -37,7 +37,141 @@ enum Flag {
 
 //! Lattice Boltzmann Method fluid solver
 
-//! Uses the BGK collision model and Smagorinsky turbulence correction
+//! Uses the BGK collision model and Smagorinsky turbulence correction.
+//!
+//! The following boundary conditions are implemented:
+//! - \em no-slip  Bounce back condition (fixed wall)
+//! - \em velocity Bounce back condition (moving wall)
+//! - \em inflow   Inflow velocity with density of 1.0
+//! - \em outflow  Enforces zero-gradient pressure at the boundary
+//! - \em pressure Enforces atmospheric pressure at the boundary
+//!
+//! The constructor requires a configuration file in a ConfParser compatible
+//! format to be given, which must specify the following hierarchy of blocks:
+//! - \em domain Specifies the domain size
+//!  - \b sizeX \em int Number of cells in x-dimension
+//!  - \b sizeY \em int Number of cells in y-dimension
+//!  - \b sizeZ \em int Number of cells in z-dimension
+//! - \em parameters Specifies the simulation parameters
+//!  - \b omega        \em float Inverse lattice velocity
+//!  - \b cSmagorinsky \em float Smagorinsky turbulence constant
+//!  - \b maxSteps     \em int   Number of time steps to simulate
+//! - \em vtk Specifies vtk output (optional, no output will be generated if
+//!           this block is not present)
+//!  - \b vtkFileName \em string Base name and path for the vtk file to write out
+//!                           (relative to location of executable, will be
+//!                           appended by current timestep and .vtk extension)
+//!  - \b vtkStep     \em int    Number of timesteps in between 2 vtk file outputs
+//! - \em boundaries Specifies the boundary conditions, contains a subblock for
+//!                  each side of the domain (\em bottom, \em top, \em north,
+//!                  \em south, \em east, \em west) which in turn can contain
+//!                  1 or more of the following subblocks to specify the type of
+//!                  boundary condition.
+//!  - \em noslip   Bounce back condition (fixed wall)
+//!  - \em velocity Bounce back condition (moving wall)
+//!   - \b u_x \e float Velocity of moving wall in x-direction
+//!   - \b u_y \e float Velocity of moving wall in y-direction
+//!   - \b u_z \e float Velocity of moving wall in y-direction
+//!  - \em inflow   Inflow velocity with density of 1.0
+//!   - \b u_x \e float Inflow velocity in x-direction
+//!   - \b u_y \e float Inflow velocity in y-direction
+//!   - \b u_z \e float Inflow velocity in z-direction
+//!  - \em outflow  Enforces zero-gradient pressure at the boundary
+//!  - \em pressure Enforces atmospheric pressure at the boundary
+//!  .
+//!  Every boundary block needs to specify the coordinates of the rectangular
+//!  patch, where the fixed coordinate is implicitly set and needs not to be
+//!  specified (i.e. \e z for \e bottom and \e top, \e y for \e north and \e
+//!  south and \e x for \e east and \e west.
+//!  - \b xStart \e int Start cell in x-direction (not required for \e east and \e west)
+//!  - \b xEnd   \e int End cell in x-direction (not required for \e east and \e west)
+//!  - \b yStart \e int Start cell in y-direction (not required for \e north and \e south)
+//!  - \b yEnd   \e int End cell in y-direction (not required for \e north and \e south)
+//!  - \b zStart \e int Start cell in z-direction (not required for \e bottom and \e top)
+//!  - \b zEnd   \e int End cell in z-direction (not required for \e bottom and \e top)
+//!  .
+//!  Boundary cells that are not specified are implicitly set to \e noslip. An
+//!  error is thrown if a boundary cell is specified twice. \e bottom and \e top
+//!  have priority over \e north and \e south which in turn have priority over
+//!  \e east and \e west, i.e. the edges of the rectangle are added to the
+//!  boundary regions according to these priorities given.
+//!
+//! Example configuration file:
+//! \code
+//! domain {
+//!   sizeX 62;
+//!   sizeY 62;
+//!   sizeZ 62;
+//! }
+//!
+//! parameters {
+//!   omega 1.9;
+//!   cSmagorinsky 0.03;
+//!   maxSteps 1201;
+//! }
+//!
+//! vtk {
+//!   vtkFileName vtk/outflow_60_60_60_1.9_0.03_1201_25;
+//!   vtkStep 25;
+//! }
+//!
+//! boundaries {
+//!   top {
+//!     outflow {
+//!       xStart  1;
+//!       xEnd   60;
+//!       yStart  1;
+//!       yEnd   60;
+//!     }
+//!   }
+//!   bottom {
+//!     inflow {
+//!       xStart 26;
+//!       xEnd 35;
+//!       yStart 26;
+//!       yEnd 35;
+//!       u_x 0.0;
+//!       u_y 0.0;
+//!       u_z 0.1;
+//!     }
+//!   }
+//!   west {
+//!     inflow {
+//!       zStart 2;
+//!       zEnd 59;
+//!       yStart 2;
+//!       yEnd 59;
+//!       u_x 0.001;
+//!       u_y 0.0;
+//!       u_z 0.0;
+//!     }
+//!   }
+//!   east {
+//!     outflow {
+//!       zStart 2;
+//!       zEnd 59;
+//!       yStart 2;
+//!       yEnd 59;
+//!     }
+//!   }
+//!   north {
+//!     outflow {
+//!       xStart 1;
+//!       xEnd 60;
+//!       zStart 2;
+//!       zEnd 59;
+//!     }
+//!   }
+//!   south {
+//!     outflow {
+//!       xStart 1;
+//!       xEnd 60;
+//!       zStart 2;
+//!       zEnd 59;
+//!     }
+//!   }
+//! }
+//! \endcode
 //! \note define the preprocessor symbol NSMAGO to disable turbulence correction
 
 template<typename T>
@@ -76,7 +210,18 @@ protected:
   // Internal helper functions //
   // ========================= //
 
+  //! Setup the solver by processing configuration file
+
+  //! Initializes the geometry of the domain and the boundaries according to the
+  //! configuration file given.
+  //! \param[in] configFileName Path to configuration file
+
   void setup( std::string configFileName );
+
+  //! Process a boundary block
+
+  //! \param[in] block Boundary block to process (either \e bottom, \e top, \e
+  //!                  north, \e south, \e east, \e west)
 
   inline void setupBoundary( ConfBlock& block, int x, int y, int z );
 
@@ -97,7 +242,7 @@ protected:
 
   inline void collideStream( int x, int y, int z, T omega );
 
-  //! Perform a collide-stream step without turbulence correction
+  //! Perform a collide-stream step with turbulence correction
 
   //! \param[in] x Cell coordinate for dimension x
   //! \param[in] y Cell coordinate for dimension y
