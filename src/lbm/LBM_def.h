@@ -7,6 +7,19 @@
 #ifndef LBM_DEF_H_
 #define LBM_DEF_H_
 
+#ifndef htobe32(x)
+
+  #if __BYTE_ORDER == __LITTLE_ENDIAN
+    #include <byteswap.h>
+    #define htobe32(x) bswap_32(x)
+    #define htobe64(x) bswap_64(x)
+  #else
+    #define htobe32(x) (x)
+    #define htobe64(x) (x)
+  #endif
+
+#endif
+
 namespace lbm {
 
 // ============================ //
