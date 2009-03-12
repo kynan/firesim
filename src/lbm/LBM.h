@@ -190,7 +190,16 @@ public:
   //! \note There is no default constructor available!
   //! \param[in] configFileName Path to configuration file
 
-  LBM( std::string configFileName );
+  LBM( const std::string configFileName );
+
+  //! Constructor
+
+  //! Initializes the geometry of the domain and the boundaries according to the
+  //! configuration block given.
+  //! \note There is no default constructor available!
+  //! \param[in] base Root configuration block
+
+  LBM( ConfBlock& base );
 
   //! Destructor
 
@@ -204,6 +213,14 @@ public:
 
   void run();
 
+  //! Perform a single LBM step
+
+  //! The output will be written to a VTK file if appropriate (legacy format)
+
+  double runStep();
+
+  inline Vec3<T> getVelocity( T x, T y, T z );
+
 protected:
 
   // ========================= //
@@ -216,7 +233,7 @@ protected:
   //! configuration file given.
   //! \param[in] configFileName Path to configuration file
 
-  void setup( std::string configFileName );
+  void setup( ConfBlock& base );
 
   //! Process a boundary block
 
@@ -240,7 +257,7 @@ protected:
   //! \param[in] z Cell coordinate for dimension z
   //! \param[in] omega Inverse lattice velocity
 
-  inline void collideStream( int x, int y, int z, T omega );
+  inline void collideStream( int x, int y, int z );
 
   //! Perform a collide-stream step with turbulence correction
 
@@ -250,7 +267,7 @@ protected:
   //! \param[in] nu Lattice viscosity
   //! \param[in] cSqr Squared Smagorinsky constant
 
-  inline void collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr );
+  inline void collideStreamSmagorinsky( int x, int y, int z );
 
   //! Treat the no-slip boundary cells
 
@@ -277,7 +294,7 @@ protected:
   //! \note Output is in binary VTK legacy file format
   //! \param[in] timestep Current simulation step
 
-  void writeVtkFile( int timestep );
+  void writeVtkFile();
 
   // ============ //
   // Data members //
@@ -287,13 +304,23 @@ protected:
 
   T omega_;
 
-  //! Smagorinsky turbulence constant
+#ifndef NSMAGO
+  //! Lattice viscosity
 
-  T cSmagorinsky_;
+  T nu_;
+
+  //! Squared Smagorinsky turbulence constant
+
+  T cSmagoSqr_;
+#endif
 
   //! Number of collide-stream steps to perform
 
   int maxSteps_;
+
+  //! Current time step
+
+  int curStep_;
 
   //! VTK files will be written out at multiples of this step size
 
@@ -364,7 +391,7 @@ protected:
 //!       type of a template paramter
 
 template<>
-void LBM<double>::writeVtkFile( int timestep );
+void LBM<double>::writeVtkFile();
 
 //! Specialization of the the VTK file writer for template type float
 //! \note This is necessary as the type needs to be written to the VTK file in
@@ -372,7 +399,7 @@ void LBM<double>::writeVtkFile( int timestep );
 //!       type of a template paramter
 
 template<>
-void LBM<float>::writeVtkFile( int timestep );
+void LBM<float>::writeVtkFile();
 
 } // namespace lbm
 

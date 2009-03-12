@@ -89,7 +89,8 @@ public:
 
   //! Iterator type for the children of the block
 
-  typedef std::multimap< std::string, ConfBlock >::iterator bIter;
+  typedef std::multimap< std::string, ConfBlock >::iterator childIter;
+  typedef std::map< std::string, std::string >::iterator propIter;
 
   // ============================ //
   // Constructors and destructors //
@@ -126,7 +127,7 @@ public:
   //! \return Pointer to searched for block, \em NULL if none was found
 
   ConfBlock* find( std::string blockName ) {
-    bIter it = children_.find( blockName );
+    childIter it = children_.find( blockName );
     if ( it == children_.end() ) return NULL;
     return &(it->second);
   }
@@ -138,7 +139,7 @@ public:
   //!         after the last block found, are the same if none was found. Blocks
   //!         can be retrieved by ->second property of the iterator.
 
-  std::pair< bIter, bIter > findAll( std::string blockName ) {
+  std::pair< childIter, childIter > findAll( std::string blockName ) {
     return children_.equal_range( blockName );
   }
 
@@ -156,6 +157,22 @@ public:
     return boost::lexical_cast<T>( it->second );
   }
 
+  //! Retrieve parameter as certain type
+
+  //! \param[in]  key   Parameter name to retrieve
+  //! \param[out] value Variable to store value in
+  //! \tparam    T   Type to retrieve parameter in
+  //! \return \e true if parameter was found, \e false if not
+  //! \note Will not throw an exception, instead return value must be checked
+
+  template < typename T >
+  bool getParam( std::string key, T& value ) {
+    propIter it = props_.find( key );
+    if ( it == props_.end() ) return false;
+    value = boost::lexical_cast<T>( it->second );
+    return true;
+  }
+
   // ======= //
   // Setters //
   // ======= //
@@ -166,7 +183,7 @@ public:
   //! \return Reference to newly added child
 
   ConfBlock& addChild( std::string blockName ) {
-    bIter bit = children_.insert( std::make_pair( blockName, ConfBlock() ) );
+    childIter bit = children_.insert( std::make_pair( blockName, ConfBlock() ) );
     return bit->second;
   }
 
@@ -183,9 +200,12 @@ public:
 
   //! \param[in] key   Parameter name to add
   //! \param[in] value Parameter value to add
+  //! \return \e true if a new key value pair was actually created, \e false if
+  //!         the key already existed
 
-  void addParam( std::string key, std::string value ) {
-    props_.insert( std::make_pair( key, value ) );
+  bool addParam( std::string key, std::string value ) {
+    std::pair<propIter,bool> p = props_.insert( std::make_pair( key, value ) );
+    return p.second;
   }
 
   //! Set parameter
@@ -193,21 +213,24 @@ public:
   //! \param[in] key   Parameter name to set
   //! \param[in] value Parameter value to set
   //! \tparam    T     Type of the parameter to set (will be converted to string)
+  //! \return \e true if the parameter was actually set, \e false if it does
+  //!         not exist
 
   template < typename T >
-  void setParam( std::string key, T value ) throw ( ParameterNotFound ) {
-    std::map< std::string, std::string >::iterator it = props_.find( key );
-    if ( it == props_.end() )
-      throw ParameterNotFound( key.c_str() );
+  bool setParam( std::string key, T value ) {
+    propIter it = props_.find( key );
+    if ( it == props_.end() ) return false;
     it->second = boost::lexical_cast<std::string>( value );
+    return true;
   }
 
   //! Remove parameter with a given key
 
   //! \param[in] key Parameter key to remove
-  //! \return 1 if the key / value pair was removed, 0 if it was not found
+  //! \return \e true if the key / value pair was removed, \e false if it was
+  //!         not found
 
-  int removeParam( std::string key ) {
+  bool removeParam( std::string key ) {
     return props_.erase( key );
   }
 

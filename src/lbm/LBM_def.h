@@ -7,7 +7,7 @@
 #ifndef LBM_DEF_H_
 #define LBM_DEF_H_
 
-#ifndef htobe32(x)
+#ifndef htobe32
 
   #if __BYTE_ORDER == __LITTLE_ENDIAN
     #include <byteswap.h>
@@ -27,8 +27,22 @@ namespace lbm {
 // ============================ //
 
 template<typename T>
-LBM<T>::LBM( std::string configFileName ) {
-  setup( configFileName );
+LBM<T>::LBM( const std::string configFileName ) {
+
+  try {
+    ConfParser p;
+    ConfBlock base = p.parse( configFileName );
+    std::cout << "Parsed configuration file " << configFileName << std::endl;
+    setup( base );
+  } catch ( std::exception e ) {
+    std::cerr << e.what() << std::endl;
+    exit( -1 );
+  }
+}
+
+template<typename T>
+LBM<T>::LBM( ConfBlock& base ) {
+  setup( base );
 }
 
 template<typename T>
@@ -40,15 +54,6 @@ LBM<T>::~LBM() {
 
 template<typename T>
 void LBM<T>::run() {
-
-#ifndef NSMAGO
-  // relaxation parameter
-  T tau = 1. / omega_;
-  // lattice viscosity
-  T nu = (2. * tau - 1.) * (1. / 6.);
-  // squared Smagorinsky constant
-  T cSqr = cSmagorinsky_ * cSmagorinsky_;
-#endif
 
   T totTime = 0.;
 
@@ -68,81 +73,8 @@ void LBM<T>::run() {
 
   // loop over maxSteps time steps
   for (int step = 0; step < maxSteps_; ++step) {
-
-    struct timeval start, end;
-    T stepTime = 0.;
-
-    gettimeofday(&start, NULL);
-
-    // loop over all cells but the ghost layer
-    for (int z = 1; z <= sizeZ; z++) {
-      for (int y = 1; y <= sizeY; y++) {
-        for (int x = 1; x <= sizeX; x++) {
-
-#ifdef NSMAGO
-          // Perform actual collision and streaming step
-          collideStream( x, y, z, omega_ );
-#else
-          // Perform collision and streaming step with Smagorinsky turbulence
-          // correction
-          collideStreamSmagorinsky(x, y, z, nu, cSqr);
-#endif
-
-        } // x
-      } // y
-    } // z
-
-    gettimeofday(&end, NULL);
-    T scTime = getTime(start, end);
-
-    // Treat no-slip boundary conditions (walls)
-    treatNoslip();
-
-    gettimeofday(&start, NULL);
-    T nTime = getTime(end, start);
-
-    // Treat velocity cells
-    treatVelocity();
-
-    gettimeofday(&end, NULL);
-    T vTime = getTime(start, end);
-
-    // Treat inflow boundary conditions
-    treatInflow();
-
-    gettimeofday(&start, NULL);
-    T iTime = getTime(end, start);
-
-    // Treat outflow boundary conditions
-    treatOutflow();
-
-    gettimeofday(&end, NULL);
-    T oTime = getTime(start, end);
-
-    // Treat pressure cells
-    treatPressure();
-
-    gettimeofday(&start, NULL);
-    T pTime = getTime(end, start);
-
-    // exchange grids for current and previous time step
-    Grid<T, Dim> *gridTmp = grid0_;
-    grid0_ = grid1_;
-    grid1_ = gridTmp;
-
-    stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
-    totTime += stepTime;
-
-    std::cout << "Time step " << step << " of " << maxSteps_ << " took ";
-    std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
-    std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
-    std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
-    std::cout << std::endl;
-
-    if ( vtkStep_ != 0 && step % vtkStep_ == 0 )
-      writeVtkFile(step);
-
-  } // step
+    totTime += runStep();
+  }
 
   std::cout << "LBM finished! Processed " << maxSteps_ << " timesteps in ";
   std::cout << totTime << " secs!" << std::endl;
@@ -151,17 +83,134 @@ void LBM<T>::run() {
   std::cout << " MLUP/s" << std::endl;
 }
 
+template<typename T>
+double LBM<T>::runStep() {
+
+  // Get effective domain size (without ghost layer)
+  int sizeX = grid0_->getSizeX() - 2;
+  int sizeY = grid0_->getSizeY() - 2;
+  int sizeZ = grid0_->getSizeZ() - 2;
+
+  int numCells = sizeX * sizeY * sizeZ;
+
+  struct timeval start, end;
+  T stepTime = 0.;
+
+  gettimeofday(&start, NULL);
+
+  // loop over all cells but the ghost layer
+  for (int z = 1; z <= sizeZ - 1; z++) {
+    for (int y = 1; y <= sizeY - 1; y++) {
+      for (int x = 1; x <= sizeX - 1; x++) {
+
+#ifdef NSMAGO
+        // Perform actual collision and streaming step
+        collideStream( x, y, z );
+#else
+        // Perform collision and streaming step with Smagorinsky turbulence
+        // correction
+        collideStreamSmagorinsky( x, y, z );
+#endif
+
+      } // x
+    } // y
+  } // z
+
+  gettimeofday(&end, NULL);
+  T scTime = getTime(start, end);
+
+  // Treat no-slip boundary conditions (walls)
+  treatNoslip();
+
+  gettimeofday(&start, NULL);
+  T nTime = getTime(end, start);
+
+  // Treat velocity cells
+  treatVelocity();
+
+  gettimeofday(&end, NULL);
+  T vTime = getTime(start, end);
+
+  // Treat inflow boundary conditions
+  treatInflow();
+
+  gettimeofday(&start, NULL);
+  T iTime = getTime(end, start);
+
+  // Treat outflow boundary conditions
+  treatOutflow();
+
+  gettimeofday(&end, NULL);
+  T oTime = getTime(start, end);
+
+  // Treat pressure cells
+  treatPressure();
+
+  gettimeofday(&start, NULL);
+  T pTime = getTime(end, start);
+
+  // exchange grids for current and previous time step
+  Grid<T, Dim> *gridTmp = grid0_;
+  grid0_ = grid1_;
+  grid1_ = gridTmp;
+
+  stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
+
+  std::cout << "Time step " << curStep_ << " of " << maxSteps_ << " took ";
+  std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
+  std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
+  std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
+  std::cout << std::endl;
+
+  if ( vtkStep_ != 0 && curStep_ % vtkStep_ == 0 )
+    writeVtkFile();
+
+  ++curStep_;
+  return stepTime;
+}
+
+template<typename T>
+inline Vec3<T> LBM<T>::getVelocity( T x, T y, T z ) {
+  int xf = (int) x;
+  int yf = (int) y;
+  int zf = (int) z;
+  int xc = xf + 1;
+  int yc = yf + 1;
+  int zc = zf + 1;
+  T xd = x - xf;
+  T yd = y - yf;
+  T zd = z - zf;
+  T u_x = (1. - xd) * (
+        (1. - yd) * ( u_(xf, yf, zf, 0) * (1. - zd) + u_(xf, yf, zc, 0) * zd )
+      + yd        * ( u_(xf, yc, zf, 0) * (1. - zd) + u_(xf, yc, zc, 0) * zd )
+                      ) + xd * (
+        (1. - yd) * ( u_(xc, yf, zf, 0) * (1. - zd) + u_(xc, yf, zc, 0) * zd )
+      + yd        * ( u_(xc, yc, zf, 0) * (1. - zd) + u_(xc, yc, zc, 0) * zd )
+                               );
+  T u_y = (1. - xd) * (
+        (1. - yd) * ( u_(xf, yf, zf, 1) * (1. - zd) + u_(xf, yf, zc, 1) * zd )
+      + yd        * ( u_(xf, yc, zf, 1) * (1. - zd) + u_(xf, yc, zc, 1) * zd )
+                      ) + xd * (
+        (1. - yd) * ( u_(xc, yf, zf, 1) * (1. - zd) + u_(xc, yf, zc, 1) * zd )
+      + yd        * ( u_(xc, yc, zf, 1) * (1. - zd) + u_(xc, yc, zc, 1) * zd )
+                               );
+  T u_z = (1. - xd) * (
+        (1. - yd) * ( u_(xf, yf, zf, 2) * (1. - zd) + u_(xf, yf, zc, 2) * zd )
+      + yd        * ( u_(xf, yc, zf, 2) * (1. - zd) + u_(xf, yc, zc, 2) * zd )
+                      ) + xd * (
+        (1. - yd) * ( u_(xc, yf, zf, 2) * (1. - zd) + u_(xc, yf, zc, 2) * zd )
+      + yd        * ( u_(xc, yc, zf, 2) * (1. - zd) + u_(xc, yc, zc, 2) * zd )
+                               );
+  return Vec3D( u_x, u_y, u_z );
+}
+
 // ========================= //
 // Internal helper functions //
 // ========================= //
 
 template<typename T>
-void LBM<T>::setup( std::string configFileName ) {
+void LBM<T>::setup( ConfBlock& base ) {
   try {
-
-    ConfParser p;
-    ConfBlock base = p.parse( configFileName );
-    std::cout << "Parsed configuration file " << configFileName << std::endl;
 
     // Read the parameters from the config file
 
@@ -182,12 +231,23 @@ void LBM<T>::setup( std::string configFileName ) {
       throw "No parameters given.";
     }
     omega_ = paramBlock->getParam<T>( "omega" );
-    cSmagorinsky_ = paramBlock->getParam<T>( "cSmagorinsky" );
+#ifndef NSMAGO
+    T cSmagorinsky = paramBlock->getParam<T>( "cSmagorinsky" );
+#endif
     maxSteps_ = paramBlock->getParam<int>( "maxSteps" );
     std::cout << "Read parameter specification:" << std::endl;
     std::cout << "omega                : " << omega_ << std::endl;
-    std::cout << "Smagorinsky constant : " << cSmagorinsky_ << std::endl;
+#ifndef NSMAGO
+    std::cout << "Smagorinsky constant : " << cSmagorinsky << std::endl;
+#endif
     std::cout << "Number of steps      : " << maxSteps_ << std::endl;
+
+#ifndef NSMAGO
+    // lattice viscosity
+    T nu_ = (2. / omega_ - 1.) * (1. / 6.);
+    // squared Smagorinsky constant
+    T cSmagoSqr_ = cSmagorinsky * cSmagorinsky;
+#endif
 
     paramBlock = base.find( "vtk" );
     if ( paramBlock != NULL ) {
@@ -344,9 +404,9 @@ void LBM<T>::setup( std::string configFileName ) {
 template<typename T>
 inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
-  std::pair< ConfBlock::bIter, ConfBlock::bIter > bit = block.findAll( "noslip" );
+  std::pair< ConfBlock::childIter, ConfBlock::childIter > bit = block.findAll( "noslip" );
 
-  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+  for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
     ConfBlock b = it->second;
 
@@ -373,7 +433,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   bit = block.findAll( "velocity" );
 
-  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+  for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
     ConfBlock b = it->second;
 
@@ -404,7 +464,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   bit = block.findAll( "pressure" );
 
-  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+  for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
     ConfBlock b = it->second;
 
@@ -431,7 +491,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   bit = block.findAll( "inflow" );
 
-  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+  for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
     ConfBlock b = it->second;
 
@@ -462,7 +522,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   bit = block.findAll( "outflow" );
 
-  for ( ConfBlock::bIter it = bit.first; it != bit.second; ++it ) {
+  for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
     ConfBlock b = it->second;
 
@@ -499,7 +559,7 @@ inline T LBM<T>::getTime( timeval &start, timeval &end ) {
 }
 
 template<typename T>
-inline void LBM<T>::collideStream( int x, int y, int z, T omega ) {
+inline void LBM<T>::collideStream( int x, int y, int z ) {
 
   // calculate rho and u
   T rho = (*grid0_)( x, y, z, 0 ); // df in center
@@ -528,21 +588,21 @@ inline void LBM<T>::collideStream( int x, int y, int z, T omega ) {
   // perform collision (weighting with current distribution values)
   // streaming step: stream distribution values to neighboring cells
   T fc = rho - 1.5 * ( ux * ux + uy * uy + uz * uz );
-  T omegai = 1 - omega;
+  T omegai = 1 - omega_;
   // treat center value specially
   (*grid1_)( x, y, z, 0 ) = omegai * (*grid0_)( x, y, z, 0 )
-                        + omega *  w[0] * fc;
+                        + omega_ *  w[0] * fc;
   // loop over all velocity directions but center
   for ( int f = 1; f < Dim; ++f ) {
     T eiu = ex[f] * ux + ey[f] * uy + ez[f] * uz;
     (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f )
       =   omegai * (*grid0_)( x, y, z, f )
-        + omega  * w[f] * ( fc +  3 * eiu + 4.5 * eiu * eiu);
+        + omega_  * w[f] * ( fc +  3 * eiu + 4.5 * eiu * eiu);
   }
 }
 
 template<typename T>
-inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr ) {
+inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z ) {
 
   // Calculate rho and u
   T rho = (*grid0_)( x, y, z, 0 ); // df in center
@@ -614,9 +674,9 @@ inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z, T nu, T cSqr 
   qo = sqrt( qo );
 
   // Calculate local stress tensor
-  T s = ( sqrt( nu * nu + 18. * cSqr * qo ) - nu ) / ( 6. * cSqr);
+  T s = ( sqrt( nu_ * nu_ + 18. * cSmagoSqr_ * qo ) - nu_ ) / ( 6. * cSmagoSqr_);
   // Calculate turbulence modified inverse lattice viscosity
-  T omega = 1. / ( 3. * ( nu + cSqr * s ) + .5 );
+  T omega = 1. / ( 3. * ( nu_ + cSmagoSqr_ * s ) + .5 );
   T omegai = 1. - omega;
 
   // Loop over all velocity directions and stream collided distribution value
@@ -789,12 +849,12 @@ inline void LBM<T>::treatPressure() {
 }
 
 template<>
-void LBM<double>::writeVtkFile( int timestep ) {
+void LBM<double>::writeVtkFile() {
 
   // Open file for writing
   std::ostringstream oss;
-  oss << vtkFileName_ << "." << timestep << ".vtk";
-  std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
+  oss << vtkFileName_ << "." << curStep_ << ".vtk";
+  std::cout << "Writing file '" << oss.str() << "' for time step " << curStep_ << std::endl;
   std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
 
   // Get size of domain without ghost layers
@@ -804,7 +864,7 @@ void LBM<double>::writeVtkFile( int timestep ) {
 
   // Write file header
   vtkFile << "# vtk DataFile Version 2.0\n";
-  vtkFile << "VTK output file for time step " << timestep << "\n\n";
+  vtkFile << "VTK output file for time step " << curStep_ << "\n\n";
   vtkFile << "BINARY\n\n";
   vtkFile << "DATASET STRUCTURED_POINTS\n";
   vtkFile << "DIMENSIONS " << sizeX << " " << sizeY << " " << sizeZ << "\n";
@@ -857,12 +917,12 @@ void LBM<double>::writeVtkFile( int timestep ) {
 }
 
 template<>
-void LBM<float>::writeVtkFile( int timestep ) {
+void LBM<float>::writeVtkFile() {
 
   // Open file for writing
   std::ostringstream oss;
-  oss << vtkFileName_ << "." << timestep << ".vtk";
-  std::cout << "Writing file '" << oss.str() << "' for time step " << timestep << std::endl;
+  oss << vtkFileName_ << "." << curStep_ << ".vtk";
+  std::cout << "Writing file '" << oss.str() << "' for time step " << curStep_ << std::endl;
   std::ofstream vtkFile( oss.str().c_str(), std::ios::binary | std::ios::out );
 
   // Get size of domain without ghost layers
@@ -872,7 +932,7 @@ void LBM<float>::writeVtkFile( int timestep ) {
 
   // Write file header
   vtkFile << "# vtk DataFile Version 2.0\n";
-  vtkFile << "VTK output file for time step " << timestep << "\n\n";
+  vtkFile << "VTK output file for time step " << curStep_ << "\n\n";
   vtkFile << "BINARY\n\n";
   vtkFile << "DATASET STRUCTURED_POINTS\n";
   vtkFile << "DIMENSIONS " << sizeX << " " << sizeY << " " << sizeZ << "\n";

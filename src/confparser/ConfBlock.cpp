@@ -39,7 +39,7 @@ void ConfBlock::writeConfigFileRec( std::ofstream &fileHandle, std::string inden
   fileHandle << '\n';
 
   // Process children, if any
-  for ( bIter bit = children_.begin(); bit != children_.end(); ++bit ) {
+  for ( childIter bit = children_.begin(); bit != children_.end(); ++bit ) {
     // Start new block
     fileHandle << indent << bit->first << " {\n\n";
     // Recurse into block
