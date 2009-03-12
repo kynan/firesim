@@ -183,6 +183,8 @@ public:
   // Constructors and destructors //
   // ============================ //
 
+  LBM() {}
+
   //! Constructor
 
   //! Initializes the geometry of the domain and the boundaries according to the
@@ -221,11 +223,9 @@ public:
 
   inline Vec3<T> getVelocity( T x, T y, T z );
 
-protected:
-
-  // ========================= //
-  // Internal helper functions //
-  // ========================= //
+  inline Vec3<T> getVelocity( const Vec3<T>& v ) {
+    return getVelocity( v[0], v[1], v[2] );
+  }
 
   //! Setup the solver by processing configuration file
 
@@ -234,6 +234,12 @@ protected:
   //! \param[in] configFileName Path to configuration file
 
   void setup( ConfBlock& base );
+
+protected:
+
+  // ========================= //
+  // Internal helper functions //
+  // ========================= //
 
   //! Process a boundary block
 

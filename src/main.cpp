@@ -4,7 +4,11 @@
 
 #include <iostream>
 
-#include "lbm/LBM.h"
+#include "particles/ParticleHandler.h"
+
+#ifndef Real
+  #define Real float
+#endif
 
 //! Main function
 
@@ -22,8 +26,8 @@ int main ( int argc, char** argv ) {
     exit( -1 );
   }
 
-  lbm::LBM<float> myLBM( argv[1] );
-  myLBM.run();
+  particles::ParticleHandler<Real> myFire( argv[1] );
+  myFire.run();
 
   return 0;
 }

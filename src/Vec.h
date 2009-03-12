@@ -26,6 +26,12 @@ public:
 
   Vec3() : data_( 0 ) {}
 
+  //! Copy constructor
+
+  //! \param[in] v Vector to copy from
+
+  Vec3( const Vec3& v ) : data_( v.data_ ) {}
+
   //! Constructor to set all three components
 
   //! \param[in] x First component
@@ -63,6 +69,16 @@ public:
   //! \return Const reference to specified component of template type
 
   inline const T& operator[]( int i ) const { return data_[i]; }
+
+  inline Vec3<T> operator+( const Vec3<T>& v ) const {
+    return Vec3<T>( data_[0] + v.data_[0], data_[1] + v.data_[1], data_[2] + v.data_[2] );
+  }
+
+  inline void operator+=( const Vec3<T>& v ) {
+    data_[0] += v.data_[0];
+    data_[1] += v.data_[1];
+    data_[2] += v.data_[2];
+  }
 
 protected:
 

@@ -201,7 +201,7 @@ inline Vec3<T> LBM<T>::getVelocity( T x, T y, T z ) {
         (1. - yd) * ( u_(xc, yf, zf, 2) * (1. - zd) + u_(xc, yf, zc, 2) * zd )
       + yd        * ( u_(xc, yc, zf, 2) * (1. - zd) + u_(xc, yc, zc, 2) * zd )
                                );
-  return Vec3D( u_x, u_y, u_z );
+  return Vec3<T>( u_x, u_y, u_z );
 }
 
 // ========================= //
@@ -244,9 +244,9 @@ void LBM<T>::setup( ConfBlock& base ) {
 
 #ifndef NSMAGO
     // lattice viscosity
-    T nu_ = (2. / omega_ - 1.) * (1. / 6.);
+    nu_ = (2. / omega_ - 1.) * (1. / 6.);
     // squared Smagorinsky constant
-    T cSmagoSqr_ = cSmagorinsky * cSmagorinsky;
+    cSmagoSqr_ = cSmagorinsky * cSmagorinsky;
 #endif
 
     paramBlock = base.find( "vtk" );
@@ -404,7 +404,7 @@ void LBM<T>::setup( ConfBlock& base ) {
 template<typename T>
 inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
-  std::pair< ConfBlock::childIter, ConfBlock::childIter > bit = block.findAll( "noslip" );
+  ConfBlock::childIterPair bit = block.findAll( "noslip" );
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 

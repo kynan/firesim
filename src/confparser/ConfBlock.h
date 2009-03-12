@@ -13,8 +13,6 @@
 #include <stdexcept>
 #include <boost/lexical_cast.hpp>
 
-//#include "ConfBlockIterator.h"
-
 //! Common namespace for all classes related to parsing of configuration files
 
 namespace confparser {
@@ -91,6 +89,7 @@ public:
 
   typedef std::multimap< std::string, ConfBlock >::iterator childIter;
   typedef std::map< std::string, std::string >::iterator propIter;
+  typedef std::pair< childIter, childIter > childIterPair;
 
   // ============================ //
   // Constructors and destructors //
