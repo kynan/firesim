@@ -183,7 +183,7 @@ public:
   // Constructors and destructors //
   // ============================ //
 
-  LBM() {}
+  LBM() : curStep_( 0 ) {}
 
   //! Constructor
 

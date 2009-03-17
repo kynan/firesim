@@ -27,7 +27,7 @@ namespace lbm {
 // ============================ //
 
 template<typename T>
-LBM<T>::LBM( const std::string configFileName ) {
+LBM<T>::LBM( const std::string configFileName ) : curStep_( 0 ) {
 
   try {
     ConfParser p;
@@ -41,7 +41,7 @@ LBM<T>::LBM( const std::string configFileName ) {
 }
 
 template<typename T>
-LBM<T>::LBM( ConfBlock& base ) {
+LBM<T>::LBM( ConfBlock& base ) : curStep_( 0 ) {
   setup( base );
 }
 
@@ -201,6 +201,8 @@ inline Vec3<T> LBM<T>::getVelocity( T x, T y, T z ) {
         (1. - yd) * ( u_(xc, yf, zf, 2) * (1. - zd) + u_(xc, yf, zc, 2) * zd )
       + yd        * ( u_(xc, yc, zf, 2) * (1. - zd) + u_(xc, yc, zc, 2) * zd )
                                );
+//   std::cout << "Velocity at <" << x << "," << y << "," << z << "> in timestep " << curStep_ << ": <";
+//   std::cout << u_x << "," << u_y << "," << u_z << ">" << std::endl;
   return Vec3<T>( u_x, u_y, u_z );
 }
 
@@ -213,6 +215,8 @@ void LBM<T>::setup( ConfBlock& base ) {
   try {
 
     // Read the parameters from the config file
+
+    std::cout << "Setting up LBM..." << std::endl;
 
     ConfBlock* paramBlock = base.find( "domain" );
     if ( paramBlock == NULL ) {
@@ -398,7 +402,7 @@ void LBM<T>::setup( ConfBlock& base ) {
     exit( -1 );
   }
 
-  std::cout << "Setup finished!" << std::endl;
+  std::cout << "LBM setup finished!" << std::endl;
 }
 
 template<typename T>
