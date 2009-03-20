@@ -11,16 +11,16 @@
 namespace particles {
 
 template<typename T>
-class ParticleHandler;
+class ParticleSystem;
 
 template<typename T>
 class Emitter {
 
-  friend class ParticleHandler<T>;
+  friend class ParticleSystem<T>;
 
 public:
 
-  Emitter ( Vec3<T> pos,
+  Emitter ( core::vector3df pos,
             T temp,
             int fuel,
             int emitThreshold,
@@ -35,18 +35,18 @@ public:
 
   virtual ~Emitter () {}
 
-  void emit() {
-    if ( fuel_ > std::rand() % emitThreshold_ ) {
-      particles_.push_back( Particle<T>( temp_, pos_, fuel_ * lifetimeCoeff_ ) );
-      fuel_ *= fuelConsumption_;
-    }
-  }
+//  void emit() {
+//    if ( fuel_ > std::rand() % emitThreshold_ ) {
+//      particles_.push_back( Particle<T>( temp_, pos_, fuel_ * lifetimeCoeff_ ) );
+//      fuel_ *= fuelConsumption_;
+//    }
+//  }
 
 protected:
 
   std::list< Particle<T> > particles_;
 
-  Vec3<T> pos_;
+  core::vector3df pos_;
 
   T temp_;
 

@@ -5,43 +5,68 @@
 #ifndef PARTICLE_H_
 #define PARTICLE_H_
 
-#include "../Vec.h"
+#include <irrlicht/irrlicht.h>
+
+using namespace irr;
 
 enum ParticleType { FIRE = 0, SMOKE = 1 };
 
 namespace particles {
 
 template<typename T>
-class ParticleHandler;
+class ParticleSystem;
 
 template<typename T>
 class Particle {
 
-  friend class ParticleHandler<T>;
+  friend class ParticleSystem<T>;
 
 public:
 
   Particle () {}
 
-  Particle ( T temp, Vec3<T> pos, int lifetime ) :
-    type_( FIRE ), temp_( temp ), pos_( pos ), lifetime_( lifetime ) {}
+  Particle ( scene::ISceneNode* parent,
+             scene::ISceneManager* mgr,
+             s32 id,
+             const core::vector3df &position,
+             video::ITexture* texture,
+             T temp,
+             int lifetime ) :
+               sprite_( mgr->addBillboardSceneNode( parent, core::dimension2df(10.0f,10.0f), position, id ) ),
+               type_( FIRE ),
+               temp_( temp ),
+               lifetime_( lifetime ) {
+    assert( sprite_ );
+    sprite_->setMaterialTexture( 0, texture );
+    sprite_->setMaterialFlag( video::EMF_LIGHTING, false );
+//    sprite_->setMaterialType( video::EMT_SOLID );
+    sprite_->setMaterialType( video::EMT_TRANSPARENT_ADD_COLOR );
+//    sprite_->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+  }
 
-  virtual ~Particle () {}
+  virtual ~Particle () {
+//    sprite_->remove();
+  }
 
   T dist ( Particle& p ) {
-    T dx = fabs( pos_[0] - p.pos_[0] );
-    T dy = fabs( pos_[1] - p.pos_[1] );
-    T dz = fabs( pos_[2] - p.pos_[2] );
-    return dx * dx + dy * dy + dz * dz;
+    return getPos().getDistanceFrom( p.getPos() );
+  }
+
+  void updatePos( const core::vector3df& d ) {
+    sprite_->setPosition( getPos() + d );
+  }
+
+  const core::vector3df& getPos() {
+    return sprite_->getPosition();
   }
 
 protected:
 
+  scene::IBillboardSceneNode* sprite_;
+
   ParticleType type_;
 
   T temp_;
-
-  Vec3<T> pos_;
 
   int lifetime_;
 

@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include "particles/ParticleHandler.h"
+#include "particles/ParticleSystem.h"
 
 #ifndef Real
   #define Real float
@@ -26,7 +26,7 @@ int main ( int argc, char** argv ) {
     exit( -1 );
   }
 
-  particles::ParticleHandler<Real> myFire( argv[1] );
+  particles::ParticleSystem<Real> myFire( argv[1] );
   myFire.run();
 
   return 0;

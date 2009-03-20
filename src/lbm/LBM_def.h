@@ -156,11 +156,13 @@ double LBM<T>::runStep() {
 
   stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
 
+#ifdef DEBUG
   std::cout << "Time step " << curStep_ << " of " << maxSteps_ << " took ";
   std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
   std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
   std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
   std::cout << std::endl;
+#endif
 
   if ( vtkStep_ != 0 && curStep_ % vtkStep_ == 0 )
     writeVtkFile();
