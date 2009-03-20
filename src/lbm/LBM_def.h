@@ -284,10 +284,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       throw "No boundary description given.";
     }
 
-    std::cout << "South..." << std::endl;
+    std::cout << "Bottom..." << std::endl;
 
-    // South
-    ConfBlock* boundBlock = paramBlock->find( "south" );
+    // Bottom
+    ConfBlock* boundBlock = paramBlock->find( "bottom" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, 1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -299,10 +299,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "North..." << std::endl;
+    std::cout << "Top..." << std::endl;
 
-    // North
-    boundBlock = paramBlock->find( "north" );
+    // Top
+    boundBlock = paramBlock->find( "top" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, sizeY - 2, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -314,10 +314,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "West..." << std::endl;
+    std::cout << "Left..." << std::endl;
 
-    // West
-    boundBlock = paramBlock->find( "west" );
+    // Left
+    boundBlock = paramBlock->find( "left" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, 1, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -329,10 +329,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "East..." << std::endl;
+    std::cout << "Right..." << std::endl;
 
-    // East
-    boundBlock = paramBlock->find( "east" );
+    // Right
+    boundBlock = paramBlock->find( "right" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, sizeX - 2, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -344,10 +344,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "Bottom..." << std::endl;
+    std::cout << "Front..." << std::endl;
 
-    // Bottom
-    boundBlock = paramBlock->find( "bottom" );
+    // Front
+    boundBlock = paramBlock->find( "front" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, 1 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {
@@ -359,10 +359,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "Top..." << std::endl;
+    std::cout << "Back..." << std::endl;
 
-    // Top
-    boundBlock = paramBlock->find( "top" );
+    // Back
+    boundBlock = paramBlock->find( "back" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, sizeZ - 2 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {

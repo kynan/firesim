@@ -69,18 +69,27 @@ public:
       if ( paramBlock == NULL ) throw "No parameter specification given.";
       alpha_ = paramBlock->getParam<T>( "alpha" );
       beta_ = paramBlock->getParam<T>( "beta" );
+      k_ = paramBlock->getParam<T>( "k" );
+      T g_x = paramBlock->getParam<T>( "g_x" );
+      T g_y = paramBlock->getParam<T>( "g_y" );
+      T g_z = paramBlock->getParam<T>( "g_z" );
+      gravity_ = core::vector3df( g_x, g_y, g_z );
       smokeTemp_ = paramBlock->getParam<T>( "smokeTemp" );
+      ambTemp_ = paramBlock->getParam<T>( "ambTemp" );
       maxSteps_ = paramBlock->getParam<int>( "maxSteps" );
       std::cout << "Read parameter specification:" << std::endl;
-      std::cout << "alpha (conservation coefficient)  : " << alpha_ << std::endl;
-      std::cout << "beta (transferability coefficient): " << beta_ << std::endl;
-      std::cout << "Temperature threshold for smoke   : " << smokeTemp_ << std::endl;
-      std::cout << "Number of steps                   : " << maxSteps_ << std::endl;
+      std::cout << "alpha (conservation coefficient)   : " << alpha_ << std::endl;
+      std::cout << "beta (transferability coefficient) : " << beta_ << std::endl;
+      std::cout << "k (thermal expansion coefficient)  : " << k_ << std::endl;
+      std::cout << "Gravity unit vector                : <" << g_x << "," << g_y << "," << g_z << ">" << std::endl;
+      std::cout << "Temperature threshold for smoke (K): " << smokeTemp_ << std::endl;
+      std::cout << "Ambient temperature (K)            : " << ambTemp_ << std::endl;
+      std::cout << "Number of steps                    : " << maxSteps_ << std::endl;
 
       // Precompute Gauss function for thermal diffusion
       int maxElem = sqrt( sizeX_ * sizeX_ + sizeY_ * sizeY_ + sizeZ_ * sizeZ_ );
       gaussTable_.reserve( maxElem );
-      T a = 1. / sqrt( 2 * M_PI );
+      T a = 1. / sqrt( 2. * M_PI );
       for ( int i = 0; i < maxElem; ++i ) {
         gaussTable_.push_back( a * exp(-  i * i / 2. ) );
       }
@@ -147,8 +156,7 @@ public:
           for ( y = yStart, j = 0; y <= yEnd && j < yRange; y += dy, ++j ) {
             for ( x = xStart, k = 0; x <= xEnd && k < xRange; x += dx, ++k ) {
               std::cout << "Create emiter at <" << x << "," << y << "," << z << ">" << std::endl;
-              // irrlicht uses left-handed coordinate system -> exchange y and z
-              emitters_.push_back( Emitter<T>( core::vector3df( x, z, y ),
+              emitters_.push_back( Emitter<T>( core::vector3df( x, y, z ),
                                                temp,
                                                fuel,
                                                emitThreshold,
@@ -172,7 +180,7 @@ public:
         textures_.push_back( drvr_->getTexture( file.c_str() ) );
       }
 
-      generateBlackBodyColorTable( maxTemp );
+      generateBlackBodyColorTable( 2. * maxTemp );
 
     } catch ( std::exception e ) {
       std::cerr << e.what() << std::endl;
@@ -189,8 +197,8 @@ public:
 
     device_->setWindowCaption(L"LBM Reference");
     smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
-                               core::vector3df( sizeX_/2, sizeZ_/2, -sizeY_ ),
-                               core::vector3df( sizeX_/2, sizeZ_/2, 0 ) );
+                               core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
+                               core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
 //    smgr_->addCameraSceneNodeFPS();
 //    device_->getCursorControl()->setVisible( false );
 
@@ -238,9 +246,9 @@ protected:
         // Remove particles that have left the domain or exceeded their lifetime
         while ( itp != (*ite).particles_.end() && (
                 (*itp).getPos().X < 1 || (*itp).getPos().X > sizeX_ - 1 ||
-                (*itp).getPos().Y < 1 || (*itp).getPos().Y > sizeZ_ - 1 ||
-                (*itp).getPos().Z < 1 || (*itp).getPos().Z > sizeY_ -1  ||
-                (*itp).lifetime_ < 1 ) ) {
+                (*itp).getPos().Y < 1 || (*itp).getPos().Y > sizeY_ - 1 ||
+                (*itp).getPos().Z < 1 || (*itp).getPos().Z > sizeZ_ -1  ||
+                (*itp).lifetime_ < 1 || (*itp).temp_ < ambTemp_ ) ) {
           // DEBUG output
           std::cout << "Removing particle " << (*itp).sprite_->getID();
           std::cout << " at position <" << (*itp).getPos().X << "," << (*itp).getPos().Y << "," << (*itp).getPos().Z << ">";
@@ -251,9 +259,11 @@ protected:
 
         if ( itp == (*ite).particles_.end() ) break;
 
-        // Move particle according to fluid velocity at current position
-        Vec3<T> tmp = solver_.getVelocity( (*itp).getPos().X, (*itp).getPos().Z, (*itp).getPos().Y );
-        (*itp).updatePos( core::vector3df( tmp[0], tmp[2], tmp[1] ) );
+        // Move particle according to fluid velocity at current position plus
+        // the buoyancy force
+        Vec3<T> tmp = solver_.getVelocity( (*itp).getPos().X, (*itp).getPos().Y, (*itp).getPos().Z );
+        (*itp).updatePos( core::vector3df( tmp[0], tmp[1], tmp[2] )
+                          + gravity_ * k_ * ( (*itp).temp_ - ambTemp_ ) );
         // DEBUG output
 //        std::cout << "Velocity after update: <" << (*itp).pos_[0] << "," << (*itp).pos_[1] << "," << (*itp).pos_[2] << ">" << std::endl;
 
@@ -268,13 +278,13 @@ protected:
           }
           (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
           // DEBUG output
-          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
-          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
+//          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
+//          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
           (*itp).sprite_->setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
           // If temperature has fallen below threshold, convert to smoke particle
           if ( (*itp).temp_ < smokeTemp_ ) {
             (*itp).type_ = SMOKE;
-            (*itp).sprite_->setColor( video::SColor( 255,180,180,180 ) );
+            (*itp).sprite_->setColor( video::SColor( 50,180,180,180 ) );
           }
         }
 
@@ -453,6 +463,9 @@ protected:
   T alpha_;
   T beta_;
   T smokeTemp_;
+  T ambTemp_;
+  T k_;
+  core::vector3df gravity_;
   std::vector<T> gaussTable_;
   std::vector< video::SColor > bbColorTable_;
 
