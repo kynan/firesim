@@ -197,7 +197,7 @@ public:
 
     device_->setWindowCaption(L"LBM Reference");
     smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
-                               core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
+                               core::vector3df( sizeX_/2, .75*sizeY_, -sizeZ_ ),
                                core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
 //    smgr_->addCameraSceneNodeFPS();
 //    device_->getCursorControl()->setVisible( false );
@@ -241,7 +241,6 @@ protected:
     typename std::list< Particle<T> >::iterator itp, itp2;
     for ( ite = emitters_.begin(); ite != emitters_.end(); ++ite ) {
       for ( itp = (*ite).particles_.begin(); itp != (*ite).particles_.end(); ++itp) {
-        assert( (*itp).sprite_ );
 
         // Remove particles that have left the domain or exceeded their lifetime
         while ( itp != (*ite).particles_.end() && (
@@ -250,10 +249,10 @@ protected:
                 (*itp).getPos().Z < 1 || (*itp).getPos().Z > sizeZ_ -1  ||
                 (*itp).lifetime_ < 1 || (*itp).temp_ < ambTemp_ ) ) {
           // DEBUG output
-          std::cout << "Removing particle " << (*itp).sprite_->getID();
+          std::cout << "Removing particle " << (*itp).sprites_[0]->getID();
           std::cout << " at position <" << (*itp).getPos().X << "," << (*itp).getPos().Y << "," << (*itp).getPos().Z << ">";
           std::cout << " with lifetime " << (*itp).lifetime_ << ", Remaining: " << (*ite).particles_.size() << std::endl;
-          (*itp).sprite_->remove();
+          (*itp).clear();
           itp = (*ite).particles_.erase( itp );
         }
 
@@ -261,7 +260,7 @@ protected:
 
         // Move particle according to fluid velocity at current position plus
         // the buoyancy force
-        Vec3<T> tmp = solver_.getVelocity( (*itp).getPos().X, (*itp).getPos().Y, (*itp).getPos().Z );
+        Vec3<T> tmp = solver_.getVelocity( (*itp).pos_.X, (*itp).pos_.Y, (*itp).pos_.Z );
         (*itp).updatePos( core::vector3df( tmp[0], tmp[1], tmp[2] )
                           + gravity_ * k_ * ( (*itp).temp_ - ambTemp_ ) );
         // DEBUG output
@@ -280,18 +279,18 @@ protected:
           // DEBUG output
 //          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
 //          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
-          (*itp).sprite_->setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
+          (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
           // If temperature has fallen below threshold, convert to smoke particle
           if ( (*itp).temp_ < smokeTemp_ ) {
             (*itp).type_ = SMOKE;
-            (*itp).sprite_->setColor( video::SColor( 50,180,180,180 ) );
+            (*itp).setColor( video::SColor( 50,180,180,180 ) );
           }
         }
 
         // Update lifetime and particle size
         if ( (*itp).lifetime_-- % 10 == 0 ) {
-          T sz = 16.0 * (*itp).lifetime_ / ( (*ite).fuel_ * (*ite).lifetimeCoeff_ );
-          (*itp).sprite_->setSize( core::dimension2df( sz, sz ) );
+          T sz = 1. + 4.0 * (*itp).lifetime_ / ( (*ite).fuel_ * (*ite).lifetimeCoeff_ );
+          (*itp).setSize( sz );
         }
       }
     }
@@ -449,7 +448,7 @@ protected:
       g *= 255. / max;
       b *= 255. / max;
 
-      bbColorTable_.push_back( video::SColor( 255, r, g, b ) );
+      bbColorTable_.push_back( video::SColor( 128, r, g, b ) );
       std::cout << "Temperature " << t << "K: RGB <" << r << ", " << g << ", " << b << ">" << std::endl;
     }
     std::cout << "Generated black body color table from " << smokeTemp_;

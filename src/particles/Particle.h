@@ -5,6 +5,9 @@
 #ifndef PARTICLE_H_
 #define PARTICLE_H_
 
+#define NUM_SPRITES 5
+#define RAND1 .2 * std::rand() / RAND_MAX - .1
+
 #include <irrlicht/irrlicht.h>
 
 using namespace irr;
@@ -32,16 +35,19 @@ public:
              video::ITexture* texture,
              T temp,
              int lifetime ) :
-               sprite_( mgr->addBillboardSceneNode( parent, core::dimension2df(10.0f,10.0f), position, id ) ),
+               sprites_( NUM_SPRITES, mgr->addBillboardSceneNode( parent, core::dimension2df(10.0f,10.0f), position, id ) ),
+               pos_( position ),
                type_( FIRE ),
                temp_( temp ),
                lifetime_( lifetime ) {
-    assert( sprite_ );
-    sprite_->setMaterialTexture( 0, texture );
-    sprite_->setMaterialFlag( video::EMF_LIGHTING, false );
-//    sprite_->setMaterialType( video::EMT_SOLID );
-    sprite_->setMaterialType( video::EMT_TRANSPARENT_ADD_COLOR );
-//    sprite_->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+      sprites_[i]->setMaterialTexture( 0, texture );
+      sprites_[i]->setMaterialFlag( video::EMF_LIGHTING, false );
+  //    sprites_[i]->setMaterialType( video::EMT_SOLID );
+      sprites_[i]->setMaterialType( i % 2 ? video::EMT_TRANSPARENT_ADD_COLOR
+                                          : video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+//      sprites_[i]->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+    }
   }
 
   virtual ~Particle () {
@@ -49,20 +55,48 @@ public:
   }
 
   T dist ( Particle& p ) {
-    return getPos().getDistanceFrom( p.getPos() );
+    T dx = pos_.X - p.pos_.X;
+    T dy = pos_.Y - p.pos_.Y;
+    T dz = pos_.Y - p.pos_.Y;
+    return sqrt( dx * dx + dy * dy + dz * dz );
   }
 
   void updatePos( const core::vector3df& d ) {
-    sprite_->setPosition( getPos() + d );
+    pos_ += d;
+    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+//      sprites_[i]->setPosition( pos_ + core::vector3df( RAND1, RAND1, RAND1 ) );
+      sprites_[i]->setPosition( sprites_[i]->getPosition() + d + core::vector3df( RAND1, RAND1, RAND1 ) );
+    }
   }
 
   const core::vector3df& getPos() {
-    return sprite_->getPosition();
+    return pos_;
+  }
+
+  void clear() {
+    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+      sprites_[i]->remove();
+    }
+    sprites_.clear();
+  }
+
+  void setColor( video::SColor c ) {
+    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+      sprites_[i]->setColor( c );
+    }
+  }
+
+  void setSize( T sz ) {
+    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+      sprites_[i]->setSize( core::dimension2df( sz, sz ) );
+    }
   }
 
 protected:
 
-  scene::IBillboardSceneNode* sprite_;
+  std::vector< scene::IBillboardSceneNode* > sprites_;
+
+  core::vector3df pos_;
 
   ParticleType type_;
 
