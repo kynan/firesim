@@ -5,8 +5,7 @@
 #ifndef PARTICLE_H_
 #define PARTICLE_H_
 
-#define NUM_SPRITES 5
-#define RAND1 .2 * std::rand() / RAND_MAX - .1
+#define RAND1 .4 * std::rand() / (T) RAND_MAX - .2
 
 #include <irrlicht/irrlicht.h>
 
@@ -28,25 +27,28 @@ public:
 
   Particle () {}
 
-  Particle ( scene::ISceneNode* parent,
-             scene::ISceneManager* mgr,
+  Particle ( scene::ISceneManager* mgr,
              s32 id,
              const core::vector3df &position,
              video::ITexture* texture,
+             int numSprites,
              T temp,
+             video::SColor& color,
              int lifetime ) :
-               sprites_( NUM_SPRITES, mgr->addBillboardSceneNode( parent, core::dimension2df(10.0f,10.0f), position, id ) ),
+               sprites_( numSprites ),
                pos_( position ),
                type_( FIRE ),
                temp_( temp ),
                lifetime_( lifetime ) {
-    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+    for ( int i = 0; i < numSprites; ++i ) {
+      sprites_[i] = mgr->addBillboardSceneNode( NULL, core::dimension2df(10.0f,10.0f), position, id );
+      sprites_[i]->setColor( color );
       sprites_[i]->setMaterialTexture( 0, texture );
       sprites_[i]->setMaterialFlag( video::EMF_LIGHTING, false );
   //    sprites_[i]->setMaterialType( video::EMT_SOLID );
-      sprites_[i]->setMaterialType( i % 2 ? video::EMT_TRANSPARENT_ADD_COLOR
-                                          : video::EMT_TRANSPARENT_ALPHA_CHANNEL );
-//      sprites_[i]->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+//      sprites_[i]->setMaterialType( i % 2 ? video::EMT_TRANSPARENT_ADD_COLOR
+//                                          : video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+      sprites_[i]->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
     }
   }
 
@@ -63,7 +65,7 @@ public:
 
   void updatePos( const core::vector3df& d ) {
     pos_ += d;
-    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
 //      sprites_[i]->setPosition( pos_ + core::vector3df( RAND1, RAND1, RAND1 ) );
       sprites_[i]->setPosition( sprites_[i]->getPosition() + d + core::vector3df( RAND1, RAND1, RAND1 ) );
     }
@@ -74,20 +76,20 @@ public:
   }
 
   void clear() {
-    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->remove();
     }
     sprites_.clear();
   }
 
   void setColor( video::SColor c ) {
-    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setColor( c );
     }
   }
 
   void setSize( T sz ) {
-    for ( int i = 0; i < NUM_SPRITES; ++i ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setSize( core::dimension2df( sz, sz ) );
     }
   }

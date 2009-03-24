@@ -374,13 +374,79 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
+    // Set up the obstacles
+    paramBlock = base.find( "obstacles" );
+    if ( paramBlock == NULL ) {
+      std::cout << "No obstacles defined" << std::endl;
+    } else {
+
+      std::cout << "Set up the obstacles..." << std::endl;
+
+      ConfBlock::childIterPair bit = paramBlock->findAll( "cuboid_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& b = it->second;
+
+        int xStart = b.getParam<int>( "xStart" );
+        int xEnd   = b.getParam<int>( "xEnd" );
+        int yStart = b.getParam<int>( "yStart" );
+        int yEnd   = b.getParam<int>( "yEnd" );
+        int zStart = b.getParam<int>( "zStart" );
+        int zEnd   = b.getParam<int>( "zEnd" );
+        std::cout << "Stationary cuboid ranging from <" << xStart << ",";
+        std::cout << yStart << "," << zStart << "> to <" << xEnd << "," << yEnd;
+        std::cout << "," << zEnd << ">" << std::endl;
+        assert( xStart > 1 && xEnd < flag_.getSizeX() - 2 &&
+                yStart > 1 && yEnd < flag_.getSizeY() - 2 &&
+                zStart > 1 && zEnd < flag_.getSizeZ() - 2 );
+        for ( int z = zStart; z <= zEnd; ++z ) {
+          for ( int y = yStart; y <= yEnd; ++y ) {
+            for ( int x = xStart; x <= xEnd; ++x ) {
+              assert( flag_( x, y, z ) == UNDEFINED );
+              flag_( x, y, z ) = NOSLIP;
+              noslipCells_.push_back( Vec3<int>( x, y, z ) );
+            }
+          }
+        }
+      }
+
+      bit = paramBlock->findAll( "inflow" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& b = it->second;
+
+        int xStart = b.getParam<int>( "xStart" );
+        int xEnd   = b.getParam<int>( "xEnd" );
+        int yStart = b.getParam<int>( "yStart" );
+        int yEnd   = b.getParam<int>( "yEnd" );
+        int zStart = b.getParam<int>( "zStart" );
+        int zEnd   = b.getParam<int>( "zEnd" );
+        T u_x      = b.getParam<T>( "u_x" );
+        T u_y      = b.getParam<T>( "u_y" );
+        T u_z      = b.getParam<T>( "u_z" );
+        assert( xStart > 1 && xEnd < flag_.getSizeX() - 2 &&
+                yStart > 1 && yEnd < flag_.getSizeY() - 2 &&
+                zStart > 1 && zEnd < flag_.getSizeZ() - 2 );
+        for ( int z = zStart; z <= zEnd; ++z ) {
+          for ( int y = yStart; y <= yEnd; ++y ) {
+            for ( int x = xStart; x <= xEnd; ++x ) {
+              assert( flag_( x, y, z ) == UNDEFINED );
+              flag_( x, y, z ) = NOSLIP;
+              inflowCells_.push_back( Vec3<int>( x, y, z ) );
+              inflowVels_.push_back( Vec3<T>( u_x, u_y, u_z ) );
+            }
+          }
+        }
+      }
+    }
+
     std::cout << "Flag fluid cells..." << std::endl;
 
-    // Non-boundary cells are fluid cells
+    // Non-boundary cells and non-obstacle cells are fluid cells
     for ( int z = 2; z < sizeZ - 2; ++z )
       for ( int y = 2; y < sizeY - 2; ++y )
         for ( int x = 2; x < sizeX - 2; ++x )
-          flag_( x, y, z ) = FLUID;
+          if ( flag_( x, y, z ) == UNDEFINED ) flag_( x, y, z ) = FLUID;
 
     std::cout << "Initialize distribution functions with equilibrium..." << std::endl;
 
@@ -414,7 +480,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -441,7 +507,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -472,7 +538,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -499,7 +565,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -530,7 +596,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
