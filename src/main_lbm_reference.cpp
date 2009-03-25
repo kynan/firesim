@@ -1,19 +1,19 @@
-//! \file main.cpp
-//! \date   Jan 2, 2009
+//! \file main_lbm_reference.cpp
+//! \date   Mar 24, 2009
 //! \author Florian Rathgeber
+
+#ifndef Real
+#define Real float
+#endif
 
 #include <iostream>
 
-#include "particles/ParticleSystem.h"
-
-#ifndef Real
-  #define Real float
-#endif
+#include "lbm/LBM.h"
+#include "lbm/LBM_def.h"
 
 //! Main function
 
-//! Initializes a lid driven cavity setup with no slip boundaries at all sides
-//! and a fixed velocity of 0.08 in x-direction at the lid (top w.r.t. to z)
+//! Runs a Lattice Boltzmann simulation according to the configuration file given.
 //! \note The commandline for the executable is:
 //!       <b>exename configFileName</b>
 //! \param[in] configFileName \b string Path to the configuration file
@@ -26,8 +26,8 @@ int main ( int argc, char** argv ) {
     exit( -1 );
   }
 
-  particles::ParticleSystem<Real> myFire( argv[1] );
-  myFire.run();
+  lbm::LBM<Real> myLBM( argv[1] );
+  myLBM.run();
 
   return 0;
 }

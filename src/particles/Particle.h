@@ -5,75 +5,134 @@
 #ifndef PARTICLE_H_
 #define PARTICLE_H_
 
-#define RAND1 .4 * std::rand() / (T) RAND_MAX - .2
+#define RAND1 .4 * rand() / (float) RAND_MAX - .2
 
+#include <vector>
 #include <irrlicht/irrlicht.h>
 
 using namespace irr;
 
-enum ParticleType { FIRE = 0, SMOKE = 1 };
+//! Common namespace for all classes related to the particle system
 
 namespace particles {
 
-template<typename T>
+//! Possible different particle types
+
+enum ParticleType { FIRE = 0, SMOKE = 1 };
+
 class ParticleSystem;
 
-template<typename T>
+//! Individual particle of the particle system
+
+//! Has a configurable number of sprites (display primitives) assigned to it.
+
 class Particle {
 
-  friend class ParticleSystem<T>;
+  //! Fried declaration to allow ParticleSystem class access to protected
+  //! members
+
+  friend class ParticleSystem;
 
 public:
 
+  // ============================ //
+  // Constructors and destructors //
+  // ============================ //
+
+  //! Default constructor
+
+  //! Does nothing.
+
   Particle () {}
+
+  //! Constructor
+
+  //! \param[in] mgr        Pointer to irrlicht scene manager
+  //! \param[in] id         Particle ID
+  //! \param[in] position   Initial particle position
+  //! \param[in] texture    Texture to assign to sprites of this particle
+  //! \param[in] numSprites Number of sprites assigned to each particle instance
+  //! \param[in] temp       Initial particle temperature
+  //! \param[in] color      Initial particle color
+  //! \param[in] lifetime   Particle lifetime (in timesteps)
 
   Particle ( scene::ISceneManager* mgr,
              s32 id,
              const core::vector3df &position,
              video::ITexture* texture,
              int numSprites,
-             T temp,
+             float temp,
              video::SColor& color,
-             int lifetime ) :
-               sprites_( numSprites ),
-               pos_( position ),
-               type_( FIRE ),
-               temp_( temp ),
-               lifetime_( lifetime ) {
-    for ( int i = 0; i < numSprites; ++i ) {
-      sprites_[i] = mgr->addBillboardSceneNode( NULL, core::dimension2df(10.0f,10.0f), position, id );
-      sprites_[i]->setColor( color );
-      sprites_[i]->setMaterialTexture( 0, texture );
-      sprites_[i]->setMaterialFlag( video::EMF_LIGHTING, false );
-  //    sprites_[i]->setMaterialType( video::EMT_SOLID );
-//      sprites_[i]->setMaterialType( i % 2 ? video::EMT_TRANSPARENT_ADD_COLOR
-//                                          : video::EMT_TRANSPARENT_ALPHA_CHANNEL );
-      sprites_[i]->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
-    }
-  }
+             int lifetime );
 
-  virtual ~Particle () {
-//    sprite_->remove();
-  }
+  //! Destructor
 
-  T dist ( Particle& p ) {
-    T dx = pos_.X - p.pos_.X;
-    T dy = pos_.Y - p.pos_.Y;
-    T dz = pos_.Y - p.pos_.Y;
+  //! Does nothing.
+
+  virtual ~Particle () {}
+
+  // ======= //
+  // Getters //
+  // ======= //
+
+  //! Get distance between this and another particle
+
+  //! \param[in] p Particle to measure distance from
+  //! \return Distance between this and given particle
+
+  float dist ( Particle& p ) {
+    float dx = pos_.X - p.pos_.X;
+    float dy = pos_.Y - p.pos_.Y;
+    float dz = pos_.Y - p.pos_.Y;
     return sqrt( dx * dx + dy * dy + dz * dz );
   }
 
-  void updatePos( const core::vector3df& d ) {
-    pos_ += d;
-    for ( int i = 0; i < sprites_.size(); ++i ) {
-//      sprites_[i]->setPosition( pos_ + core::vector3df( RAND1, RAND1, RAND1 ) );
-      sprites_[i]->setPosition( sprites_[i]->getPosition() + d + core::vector3df( RAND1, RAND1, RAND1 ) );
-    }
-  }
+  //! Get current particle position
+
+  //! \return Current particle position as vector
 
   const core::vector3df& getPos() {
     return pos_;
   }
+
+  // ======= //
+  // Setters //
+  // ======= //
+
+  //! Update particle position, including assigned sprites
+
+  //! \param[in] d Displacement vector by which particle is to be moved
+
+  void updatePos( const core::vector3df& d ) {
+    pos_ += d;
+    for ( int i = 0; i < sprites_.size(); ++i ) {
+      // Sprites are moved by given displacement + a random offset
+      sprites_[i]->setPosition( sprites_[i]->getPosition() + d
+                                + core::vector3df( RAND1, RAND1, RAND1 ) );
+    }
+  }
+
+  //! Set the color for all assigned sprites
+
+  //! \param[in] c Color to assign to all assigned sprites
+
+  void setColor( video::SColor c ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
+      sprites_[i]->setColor( c );
+    }
+  }
+
+  //! Set the size for all assigned sprites
+
+  //! \param[in] sz Size to assign to all assigned sprites
+
+  void setSize( float sz ) {
+    for ( int i = 0; i < sprites_.size(); ++i ) {
+      sprites_[i]->setSize( core::dimension2df( sz, sz ) );
+    }
+  }
+
+  //! Delete all sprites, i.e. remove them from the scene
 
   void clear() {
     for ( int i = 0; i < sprites_.size(); ++i ) {
@@ -82,28 +141,25 @@ public:
     sprites_.clear();
   }
 
-  void setColor( video::SColor c ) {
-    for ( int i = 0; i < sprites_.size(); ++i ) {
-      sprites_[i]->setColor( c );
-    }
-  }
-
-  void setSize( T sz ) {
-    for ( int i = 0; i < sprites_.size(); ++i ) {
-      sprites_[i]->setSize( core::dimension2df( sz, sz ) );
-    }
-  }
-
 protected:
 
+  // ============ //
+  // Data members //
+  // ============ //
+
+  //! Vector of sprites (display primitives) assigned to this particle
   std::vector< scene::IBillboardSceneNode* > sprites_;
 
+  //! Current particle position
   core::vector3df pos_;
 
+  //! Particle type (either FIRE or SMOKE)
   ParticleType type_;
 
-  T temp_;
+  //! Current particle temperature
+  float temp_;
 
+  //! Current particle lifetime, decreased every timestep
   int lifetime_;
 
 };
