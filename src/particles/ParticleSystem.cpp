@@ -299,7 +299,7 @@ inline void ParticleSystem::updateParticles() {
       // obstacle
       bool inObstacle = false;
       core::vector3df u = (*itp).pos_ + g + v;
-      for ( int i = 0; i < obstacles_.size(); ++i )
+      for ( uint i = 0; i < obstacles_.size(); ++i )
         inObstacle &= obstacles_[i].isPointInside( u );
       // If not, apply it
       if ( !inObstacle ) (*itp).updatePos( v + g );

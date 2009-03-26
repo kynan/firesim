@@ -5,6 +5,10 @@
 #ifndef PARTICLESYSTEM_H_
 #define PARTICLESYSTEM_H_
 
+#ifndef Real
+#define Real float
+#endif
+
 #include <irrlicht/irrlicht.h>
 
 #include "../lbm/LBM.h"

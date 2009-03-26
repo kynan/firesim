@@ -116,52 +116,72 @@ double LBM<T>::runStep() {
     } // y
   } // z
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T scTime = getTime(start, end);
+#endif
 
   // Treat no-slip boundary conditions (walls)
   treatNoslip();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T nTime = getTime(end, start);
+#endif
 
   // Treat velocity cells
   treatVelocity();
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T vTime = getTime(start, end);
+#endif
 
   // Treat inflow boundary conditions
   treatInflow();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T iTime = getTime(end, start);
+#endif
 
   // Treat outflow boundary conditions
   treatOutflow();
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T oTime = getTime(start, end);
+#endif
 
   // Treat pressure cells
   treatPressure();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T pTime = getTime(end, start);
+#endif
+
+  // Treat curved boundary cells
+  treatCurved();
+
+  gettimeofday(&end, NULL);
 
   // exchange grids for current and previous time step
   Grid<T, Dim> *gridTmp = grid0_;
   grid0_ = grid1_;
   grid1_ = gridTmp;
 
-  stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
-
 #ifdef DEBUG
+  T cTime = getTime(start, end);
+  stepTime = scTime + nTime + vTime + iTime + oTime + pTime + cTime;
+
   std::cout << "Time step " << curStep_ << " of " << maxSteps_ << " took ";
   std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
-  std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
-  std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
-  std::cout << std::endl;
+  std::cout << " + " << oTime << " + " << pTime << " + " << cTime << " = ";
+  std::cout << stepTime << "secs -> " << numCells / (stepTime * 1000000);
+  std::cout << " MLUP/s" << std::endl;
+#else
+  stepTime = getTime(start, end);
 #endif
 
   if ( vtkStep_ != 0 && curStep_ % vtkStep_ == 0 )
@@ -408,6 +428,81 @@ void LBM<T>::setup( ConfBlock& base ) {
             }
           }
         }
+      }
+
+      bit = paramBlock->findAll( "sphere_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        T xCenter = bl.getParam<T>( "xCenter" );
+        T yCenter = bl.getParam<T>( "yCenter" );
+        T zCenter = bl.getParam<T>( "zCenter" );
+        T radius  = bl.getParam<T>( "radius" );
+
+        T r2 = radius * radius;
+        // Get bounding box of sphere
+        T zStart = floor( zCenter - radius ) + .5;
+        if ( zStart < 1.5 ) zStart = 1.5;
+        T zEnd   = floor( zCenter + radius ) + .5;
+        if ( zEnd > sizeZ - .5) zEnd = sizeZ - .5;
+        T yStart = floor( yCenter - radius ) + .5;
+        if ( yStart < 1.5 ) yStart = 1.5;
+        T yEnd   = floor( yCenter + radius ) + .5;
+        if ( yEnd > sizeY - .5) yEnd = sizeY - .5;
+        T xStart = floor( xCenter - radius ) + .5;
+        if ( xStart < 1.5 ) xStart = 1.5;
+        T xEnd   = floor( xCenter + radius ) + .5;
+        if ( xEnd > sizeX - .5) xEnd = sizeX - .5;
+
+        // Go over cubic bounding box of sphere and check which cells are inside
+        for ( T z = zStart; z <= zEnd; z += 1 )
+          for ( T y = yStart; y <= yEnd; y += 1 )
+            for ( T x = xStart; x <= xEnd; x += 1 ) {
+              // Check if current cell center lies within sphere
+              if (   (x - xCenter) * (x - xCenter)
+                   + (y - yCenter) * (y - yCenter)
+                   + (z - zCenter) * (z - zCenter) < r2 ) {
+                flag_( (int) x, (int) y, (int) z ) = NOSLIP;
+                std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+              }
+            }
+        // Go over bounding box again and check which cells are actually
+        // boundary cells
+        for ( int z = zStart; z < zEnd; ++z )
+          for ( int y = yStart; y < yEnd; ++y )
+            for ( int x = xStart; x < xEnd; ++x ) {
+              if ( flag_( x, y, z ) == NOSLIP ) {
+                // Go over all velocity directions
+                bool isBoundary = false;
+                std::vector<T> delta(19, -1.);
+                for (int f = 1; f < Dim; ++f ) {
+                  if ( flag_( x + ex[f], y + ey[f], z + ez[f] ) == UNDEFINED ) {
+                    isBoundary = true;
+                    T xd = x + .5 - xCenter;
+                    T yd = y + .5 - yCenter;
+                    T zd = z + .5 - zCenter;
+                    T b = 2 * ( exn[f] * xd + eyn[f] * yd + ezn[f] * zd );
+                    T c = xd * xd + yd * yd + zd * zd - r2;
+                    assert( b*b >= 4*c );
+                    T discriminant = sqrt( b*b - 4*c );
+                    T d1 = .5 * (-b + discriminant );
+                    T d2 = .5 * (-b - discriminant );
+                    delta[f] = 1.0 - ( d1 > d2 ? d1 : d2) / le[f];
+                  }
+                }
+                if ( isBoundary ) {
+                  std::cout << "Fluid fractions for lattice links of boundary cell <";
+                  std::cout << x << "," << y << "," << z << ">:\n[ ";
+                  for ( uint i = 0; i < delta.size(); ++i ) {
+                    std::cout << delta[i] << " ";
+                  }
+                  std::cout << "]" << std::endl;
+                  curvedCells_.push_back( Vec3<int>( x, y, z ) );
+                  curvedDeltas_.push_back( delta );
+                }
+              }
+            }
       }
 
       bit = paramBlock->findAll( "inflow" );
@@ -918,6 +1013,52 @@ inline void LBM<T>::treatPressure() {
     (*grid1_)( x, y, z, 17 ) = (1./36.) * ( fc + 9. * ( uy + uz ) * ( uy + uz ) ) - (*grid1_)( x, y, z, finv[17] ); // BS
     (*grid1_)( x, y, z, 18 ) = (1./36.) * ( fc + 9. * ( ux + uz ) * ( ux + uz ) ) - (*grid1_)( x, y, z, finv[18] ); // BW
   }
+}
+
+template<typename T>
+inline void LBM<T>::treatCurved() {
+
+  // Iterate over all curved boundary cells
+  for ( uint i = 0; i < curvedCells_.size(); ++i ) {
+    int x = curvedCells_[i][0];
+    int y = curvedCells_[i][1];
+    int z = curvedCells_[i][2];
+    // Go over all lattice links
+    for ( int f = 1; f < Dim; ++f ) {
+      T delta = curvedDeltas_[i][f];
+      // Check whether lattice link crossed obstacle boundary
+      if ( delta < 0 ) {
+        continue;
+      }
+      T uf_x = u_( x + ex[f], y + ey[f], z + ez[f], 0 );
+      T uf_y = u_( x + ex[f], y + ey[f], z + ez[f], 1 );
+      T uf_z = u_( x + ex[f], y + ey[f], z + ez[f], 2 );
+      T chi, ubf_x, ubf_y, ubf_z;
+      if ( delta >= 0.5 ) {
+//        chi = ( 2 * delta - 1 ) / ( 1./omega_ - 0.5 );
+        chi = ( 2 * delta - 1 ) * omega_;
+//        T a = 1.0 - 1.5 / delta;
+        T a = 1.0 - 1.0 / delta;
+        ubf_x = a * uf_x;
+        ubf_y = a * uf_y;
+        ubf_z = a * uf_z;
+      } else {
+        chi = ( 2 * delta - 1 ) / ( 1./omega_ - 2.0 );
+        ubf_x = u_( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], 0 );
+        ubf_y = u_( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], 1 );
+        ubf_z = u_( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], 2 );
+      }
+      T euf = ex[finv[f]] * uf_x + ey[finv[f]] * uf_y + ez[finv[f]] * uf_z;
+      T feq = w[f] * rho_( x + ex[f], y + ey[f], z + ez[f] ) * ( 1
+                       + 3 * (ex[finv[f]] * ubf_x + ey[finv[f]] * ubf_y + ez[finv[f]] * ubf_z)
+                       + 4.5 * euf * euf
+                       - 1.5 * (uf_x * uf_x + uf_y * uf_y + uf_z * uf_z) );
+      (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f ) =
+          (1.0 - chi) * (*grid1_)( x, y, z, finv[f] )
+        + chi         * feq;
+    }
+  }
+
 }
 
 template<>

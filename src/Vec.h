@@ -70,14 +70,55 @@ public:
 
   inline const T& operator[]( int i ) const { return data_[i]; }
 
+  // ====================== //
+  // Mathematical operators //
+  // ====================== //
+
+  //! Addition operator
+
+  //! \param[in] v Vector to add to this vector
+  //! \return Vector sum of this vector and given vector
+
   inline Vec3<T> operator+( const Vec3<T>& v ) const {
     return Vec3<T>( data_[0] + v.data_[0], data_[1] + v.data_[1], data_[2] + v.data_[2] );
   }
+
+  //! In-place addition operator
+
+  //! \param[in] v Vector to add to this vector in-place
 
   inline void operator+=( const Vec3<T>& v ) {
     data_[0] += v.data_[0];
     data_[1] += v.data_[1];
     data_[2] += v.data_[2];
+  }
+
+  //! Inner product operator
+
+  //! \param[in] v Vector to scalar multiply with this vector
+  //! \return Scalar product of this and given vector
+
+  inline T operator*( const Vec3<T>& v ) const {
+    return data_[0] * v.data_[0] + data_[1] * v.data_[1] + data_[2] * v.data_[2];
+  }
+
+  //! Multiplication with scalar operator
+
+  //! \param[in] a Scalar to multiply this vector with
+  //! \return Vector scaled by given scalar
+
+  inline Vec3<T> operator*( const T a ) const {
+    return Vec3<T>(data_[0] * a + data_[1] * a + data_[2] * a);
+  }
+
+  //! In-place multiplication with scalar operator
+
+  //! \param[in] a Scalar to multiply this vector with in-place
+
+  inline void operator*=( const T a ) const {
+    data_[0] *= a;
+    data_[1] *= a;
+    data_[2] *= a;
   }
 
 protected:

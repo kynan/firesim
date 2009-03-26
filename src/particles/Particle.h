@@ -105,7 +105,7 @@ public:
 
   void updatePos( const core::vector3df& d ) {
     pos_ += d;
-    for ( int i = 0; i < sprites_.size(); ++i ) {
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
       // Sprites are moved by given displacement + a random offset
       sprites_[i]->setPosition( sprites_[i]->getPosition() + d
                                 + core::vector3df( RAND1, RAND1, RAND1 ) );
@@ -117,7 +117,7 @@ public:
   //! \param[in] c Color to assign to all assigned sprites
 
   void setColor( video::SColor c ) {
-    for ( int i = 0; i < sprites_.size(); ++i ) {
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setColor( c );
     }
   }
@@ -127,7 +127,7 @@ public:
   //! \param[in] sz Size to assign to all assigned sprites
 
   void setSize( float sz ) {
-    for ( int i = 0; i < sprites_.size(); ++i ) {
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setSize( core::dimension2df( sz, sz ) );
     }
   }
@@ -135,7 +135,7 @@ public:
   //! Delete all sprites, i.e. remove them from the scene
 
   void clear() {
-    for ( int i = 0; i < sprites_.size(); ++i ) {
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->remove();
     }
     sprites_.clear();

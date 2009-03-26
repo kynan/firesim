@@ -313,6 +313,10 @@ protected:
 
   inline void treatPressure();
 
+  //! Treat the curved boundary cells
+
+  inline void treatCurved();
+
   //! Write out the VTK file for a given timestep
 
   //! \note Output is in binary VTK legacy file format
@@ -405,6 +409,14 @@ protected:
   //! List with coordinates of all pressure cells
 
   std::vector< Vec3<int> > pressureCells_;
+
+  //! List with coordinates of all curved boundary cells
+
+  std::vector< Vec3<int> > curvedCells_;
+
+  //! List with fluid fractions for all lattice links of curved boundary cells
+
+  std::vector< std::vector<T> > curvedDeltas_;
 
 };
 
