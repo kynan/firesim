@@ -27,7 +27,7 @@ namespace lbm {
 // ============================ //
 
 template<typename T>
-LBM<T>::LBM( const std::string configFileName ) {
+LBM<T>::LBM( const std::string configFileName ) : curStep_( 0 ) {
 
   try {
     ConfParser p;
@@ -41,7 +41,7 @@ LBM<T>::LBM( const std::string configFileName ) {
 }
 
 template<typename T>
-LBM<T>::LBM( ConfBlock& base ) {
+LBM<T>::LBM( ConfBlock& base ) : curStep_( 0 ) {
   setup( base );
 }
 
@@ -116,51 +116,73 @@ double LBM<T>::runStep() {
     } // y
   } // z
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T scTime = getTime(start, end);
+#endif
 
   // Treat no-slip boundary conditions (walls)
   treatNoslip();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T nTime = getTime(end, start);
+#endif
 
   // Treat velocity cells
   treatVelocity();
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T vTime = getTime(start, end);
+#endif
 
   // Treat inflow boundary conditions
   treatInflow();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T iTime = getTime(end, start);
+#endif
 
   // Treat outflow boundary conditions
   treatOutflow();
 
+#ifdef DEBUG
   gettimeofday(&end, NULL);
   T oTime = getTime(start, end);
+#endif
 
   // Treat pressure cells
   treatPressure();
 
+#ifdef DEBUG
   gettimeofday(&start, NULL);
   T pTime = getTime(end, start);
+#endif
+
+  // Treat curved boundary cells
+  treatCurved();
+
+  gettimeofday(&end, NULL);
 
   // exchange grids for current and previous time step
   Grid<T, Dim> *gridTmp = grid0_;
   grid0_ = grid1_;
   grid1_ = gridTmp;
 
-  stepTime = scTime + nTime + vTime + iTime + oTime + pTime;
+#ifdef DEBUG
+  T cTime = getTime(start, end);
+  stepTime = scTime + nTime + vTime + iTime + oTime + pTime + cTime;
 
   std::cout << "Time step " << curStep_ << " of " << maxSteps_ << " took ";
   std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
-  std::cout << " + " << oTime << " + " << pTime << " = " << stepTime;
-  std::cout << "secs -> " << numCells / (stepTime * 1000000) << " MLUP/s";
-  std::cout << std::endl;
+  std::cout << " + " << oTime << " + " << pTime << " + " << cTime << " = ";
+  std::cout << stepTime << "secs -> " << numCells / (stepTime * 1000000);
+  std::cout << " MLUP/s" << std::endl;
+#else
+  stepTime = getTime(start, end);
+#endif
 
   if ( vtkStep_ != 0 && curStep_ % vtkStep_ == 0 )
     writeVtkFile();
@@ -213,6 +235,8 @@ void LBM<T>::setup( ConfBlock& base ) {
   try {
 
     // Read the parameters from the config file
+
+    std::cout << "Setting up LBM..." << std::endl;
 
     ConfBlock* paramBlock = base.find( "domain" );
     if ( paramBlock == NULL ) {
@@ -278,10 +302,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       throw "No boundary description given.";
     }
 
-    std::cout << "South..." << std::endl;
+    std::cout << "Bottom..." << std::endl;
 
-    // South
-    ConfBlock* boundBlock = paramBlock->find( "south" );
+    // Bottom
+    ConfBlock* boundBlock = paramBlock->find( "bottom" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, 1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -293,10 +317,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "North..." << std::endl;
+    std::cout << "Top..." << std::endl;
 
-    // North
-    boundBlock = paramBlock->find( "north" );
+    // Top
+    boundBlock = paramBlock->find( "top" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, sizeY - 2, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -308,10 +332,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "West..." << std::endl;
+    std::cout << "Left..." << std::endl;
 
-    // West
-    boundBlock = paramBlock->find( "west" );
+    // Left
+    boundBlock = paramBlock->find( "left" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, 1, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -323,10 +347,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "East..." << std::endl;
+    std::cout << "Right..." << std::endl;
 
-    // East
-    boundBlock = paramBlock->find( "east" );
+    // Right
+    boundBlock = paramBlock->find( "right" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, sizeX - 2, -1, -1 );
     // Fill unspecified cells with no slip boundary
     for ( int z = 2; z < sizeZ - 2; ++z ) {
@@ -338,10 +362,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "Bottom..." << std::endl;
+    std::cout << "Front..." << std::endl;
 
-    // Bottom
-    boundBlock = paramBlock->find( "bottom" );
+    // Front
+    boundBlock = paramBlock->find( "front" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, 1 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {
@@ -353,10 +377,10 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
-    std::cout << "Top..." << std::endl;
+    std::cout << "Back..." << std::endl;
 
-    // Top
-    boundBlock = paramBlock->find( "top" );
+    // Back
+    boundBlock = paramBlock->find( "back" );
     if ( boundBlock != NULL ) setupBoundary( *boundBlock, -1, -1, sizeZ - 2 );
     // Fill unspecified cells with no slip boundary
     for ( int y = 1; y <= sizeY - 2; ++y ) {
@@ -368,13 +392,204 @@ void LBM<T>::setup( ConfBlock& base ) {
       }
     }
 
+    // Set up the obstacles
+    paramBlock = base.find( "obstacles" );
+    if ( paramBlock == NULL ) {
+      std::cout << "No obstacles defined" << std::endl;
+    } else {
+
+      std::cout << "Set up the obstacles..." << std::endl;
+
+      ConfBlock::childIterPair bit = paramBlock->findAll( "cuboid_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& b = it->second;
+
+        int xStart = b.getParam<int>( "xStart" );
+        int xEnd   = b.getParam<int>( "xEnd" );
+        int yStart = b.getParam<int>( "yStart" );
+        int yEnd   = b.getParam<int>( "yEnd" );
+        int zStart = b.getParam<int>( "zStart" );
+        int zEnd   = b.getParam<int>( "zEnd" );
+
+        std::cout << "Stationary cuboid ranging from <" << xStart << ",";
+        std::cout << yStart << "," << zStart << "> to <" << xEnd << "," << yEnd;
+        std::cout << "," << zEnd << ">" << std::endl;
+
+        assert( xStart > 1 && xEnd < flag_.getSizeX() - 2 &&
+                yStart > 1 && yEnd < flag_.getSizeY() - 2 &&
+                zStart > 1 && zEnd < flag_.getSizeZ() - 2 );
+        for ( int z = zStart; z <= zEnd; ++z ) {
+          for ( int y = yStart; y <= yEnd; ++y ) {
+            for ( int x = xStart; x <= xEnd; ++x ) {
+              assert( flag_( x, y, z ) == UNDEFINED );
+              flag_( x, y, z ) = NOSLIP;
+              // Only add cells at the obstacle boundary to the noslip
+              // processing vector
+              if ( z == zStart || z == zEnd || y == yStart ||
+                   y == yEnd || x == xStart || x == xEnd )
+                noslipCells_.push_back( Vec3<int>( x, y, z ) );
+            }
+          }
+        }
+      }
+
+      bit = paramBlock->findAll( "sphere_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        T xCenter = bl.getParam<T>( "xCenter" );
+        T yCenter = bl.getParam<T>( "yCenter" );
+        T zCenter = bl.getParam<T>( "zCenter" );
+        T radius  = bl.getParam<T>( "radius" );
+
+        std::cout << "Stationary sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << std::endl;
+
+        T r2 = radius * radius;
+        // Get bounding box of sphere
+        T zStart = floor( zCenter - radius ) + .5;
+        if ( zStart < 1.5 ) zStart = 1.5;
+        T zEnd   = floor( zCenter + radius ) + .5;
+        if ( zEnd > sizeZ - .5) zEnd = sizeZ - .5;
+        T yStart = floor( yCenter - radius ) + .5;
+        if ( yStart < 1.5 ) yStart = 1.5;
+        T yEnd   = floor( yCenter + radius ) + .5;
+        if ( yEnd > sizeY - .5) yEnd = sizeY - .5;
+        T xStart = floor( xCenter - radius ) + .5;
+        if ( xStart < 1.5 ) xStart = 1.5;
+        T xEnd   = floor( xCenter + radius ) + .5;
+        if ( xEnd > sizeX - .5) xEnd = sizeX - .5;
+
+        // Go over cubic bounding box of sphere and check which cells are inside
+        for ( T z = zStart; z <= zEnd; z += 1 )
+          for ( T y = yStart; y <= yEnd; y += 1 )
+            for ( T x = xStart; x <= xEnd; x += 1 ) {
+              // Check if current cell center lies within sphere
+              if (   (x - xCenter) * (x - xCenter)
+                   + (y - yCenter) * (y - yCenter)
+                   + (z - zCenter) * (z - zCenter) < r2 ) {
+                flag_( (int) x, (int) y, (int) z ) = NOSLIP;
+                std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+              }
+            }
+        // Go over bounding box again and check which cells are actually
+        // boundary cells
+        for ( int z = zStart; z < zEnd; ++z )
+          for ( int y = yStart; y < yEnd; ++y )
+            for ( int x = xStart; x < xEnd; ++x ) {
+              if ( flag_( x, y, z ) == NOSLIP ) {
+                // Go over all velocity directions
+                bool isBoundary = false;
+                std::vector<T> delta(19, -1.);
+                for (int f = 1; f < Dim; ++f ) {
+                  if ( flag_( x + ex[f], y + ey[f], z + ez[f] ) == UNDEFINED ) {
+                    isBoundary = true;
+                    T xd = xCenter - (x + .5);
+                    T yd = yCenter - (y + .5);
+                    T zd = zCenter - (z + .5);
+                    T b = exn[f] * xd + eyn[f] * yd + ezn[f] * zd;
+                    T c = xd * xd + yd * yd + zd * zd - r2;
+                    assert( b*b >= c );
+                    delta[f] = 1.0 - ( b + sqrt( b * b - c ) ) / le[f];
+                  }
+                }
+                if ( isBoundary ) {
+                  std::cout << "Fluid fractions for lattice links of boundary cell <";
+                  std::cout << x << "," << y << "," << z << ">:\n[ ";
+                  for ( uint i = 0; i < delta.size(); ++i ) {
+                    std::cout << delta[i] << " ";
+                  }
+                  std::cout << "]" << std::endl;
+                  curvedCells_.push_back( Vec3<int>( x, y, z ) );
+                  curvedDeltas_.push_back( delta );
+                }
+              }
+            }
+      }
+
+      bit = paramBlock->findAll( "sphere_staircase" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        T xCenter = bl.getParam<T>( "xCenter" );
+        T yCenter = bl.getParam<T>( "yCenter" );
+        T zCenter = bl.getParam<T>( "zCenter" );
+        T radius  = bl.getParam<T>( "radius" );
+        std::cout << "Stationary sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << std::endl;
+
+        T r2 = radius * radius;
+        // Get bounding box of sphere
+        T zStart = floor( zCenter - radius ) + .5;
+        if ( zStart < 1.5 ) zStart = 1.5;
+        T zEnd   = floor( zCenter + radius ) + .5;
+        if ( zEnd > sizeZ - .5) zEnd = sizeZ - .5;
+        T yStart = floor( yCenter - radius ) + .5;
+        if ( yStart < 1.5 ) yStart = 1.5;
+        T yEnd   = floor( yCenter + radius ) + .5;
+        if ( yEnd > sizeY - .5) yEnd = sizeY - .5;
+        T xStart = floor( xCenter - radius ) + .5;
+        if ( xStart < 1.5 ) xStart = 1.5;
+        T xEnd   = floor( xCenter + radius ) + .5;
+        if ( xEnd > sizeX - .5) xEnd = sizeX - .5;
+
+        // Go over cubic bounding box of sphere and check which cells are inside
+        for ( T z = zStart; z <= zEnd; z += 1 )
+          for ( T y = yStart; y <= yEnd; y += 1 )
+            for ( T x = xStart; x <= xEnd; x += 1 ) {
+              // Check if current cell center lies within sphere
+              if (   (x - xCenter) * (x - xCenter)
+                   + (y - yCenter) * (y - yCenter)
+                   + (z - zCenter) * (z - zCenter) < r2 ) {
+                flag_( (int) x, (int) y, (int) z ) = NOSLIP;
+                noslipCells_.push_back( Vec3<int>( (int) x, (int) y, (int) z ) );
+                std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+              }
+            }
+      }
+
+      bit = paramBlock->findAll( "inflow" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& b = it->second;
+
+        int xStart = b.getParam<int>( "xStart" );
+        int xEnd   = b.getParam<int>( "xEnd" );
+        int yStart = b.getParam<int>( "yStart" );
+        int yEnd   = b.getParam<int>( "yEnd" );
+        int zStart = b.getParam<int>( "zStart" );
+        int zEnd   = b.getParam<int>( "zEnd" );
+        T u_x      = b.getParam<T>( "u_x" );
+        T u_y      = b.getParam<T>( "u_y" );
+        T u_z      = b.getParam<T>( "u_z" );
+        assert( xStart > 1 && xEnd < flag_.getSizeX() - 2 &&
+                yStart > 1 && yEnd < flag_.getSizeY() - 2 &&
+                zStart > 1 && zEnd < flag_.getSizeZ() - 2 );
+        for ( int z = zStart; z <= zEnd; ++z ) {
+          for ( int y = yStart; y <= yEnd; ++y ) {
+            for ( int x = xStart; x <= xEnd; ++x ) {
+              assert( flag_( x, y, z ) == UNDEFINED );
+              flag_( x, y, z ) = NOSLIP;
+              inflowCells_.push_back( Vec3<int>( x, y, z ) );
+              inflowVels_.push_back( Vec3<T>( u_x, u_y, u_z ) );
+            }
+          }
+        }
+      }
+    }
+
     std::cout << "Flag fluid cells..." << std::endl;
 
-    // Non-boundary cells are fluid cells
+    // Non-boundary cells and non-obstacle cells are fluid cells
     for ( int z = 2; z < sizeZ - 2; ++z )
       for ( int y = 2; y < sizeY - 2; ++y )
         for ( int x = 2; x < sizeX - 2; ++x )
-          flag_( x, y, z ) = FLUID;
+          if ( flag_( x, y, z ) == UNDEFINED ) flag_( x, y, z ) = FLUID;
 
     std::cout << "Initialize distribution functions with equilibrium..." << std::endl;
 
@@ -398,7 +613,7 @@ void LBM<T>::setup( ConfBlock& base ) {
     exit( -1 );
   }
 
-  std::cout << "Setup finished!" << std::endl;
+  std::cout << "LBM setup finished!" << std::endl;
 }
 
 template<typename T>
@@ -408,7 +623,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -435,7 +650,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -466,7 +681,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -474,6 +689,17 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
     int yEnd   = ( y == -1 ) ? b.getParam<int>( "yEnd" )   : y;
     int zStart = ( z == -1 ) ? b.getParam<int>( "zStart" ) : z;
     int zEnd   = ( z == -1 ) ? b.getParam<int>( "zEnd" )   : z;
+    int xDir   = ( x == -1 ) ? 0 : ( ( x > 1 ) ? -1 : 1 );
+    int yDir   = ( y == -1 ) ? 0 : ( ( y > 1 ) ? -1 : 1 );
+    int zDir   = ( z == -1 ) ? 0 : ( ( z > 1 ) ? -1 : 1 );
+    int f = 0;
+    for ( int i = 0; i < Dim; ++i ) {
+      if ( ex[i] == xDir && ey[i] == yDir && ez[i] == zDir ) {
+        f = i;
+        break;
+      }
+    }
+    assert( f > 0 );
     assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
             yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
             zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
@@ -483,6 +709,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
           assert( flag_( x, y, z ) == UNDEFINED );
           flag_( x, y, z ) = PRESSURE;
           pressureCells_.push_back( Vec3<int>( x, y, z ) );
+          pressureDFs_.push_back( f );
         }
       }
     }
@@ -493,7 +720,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -524,7 +751,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
 
   for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
 
-    ConfBlock b = it->second;
+    ConfBlock& b = it->second;
 
     int xStart = ( x == -1 ) ? b.getParam<int>( "xStart" ) : x;
     int xEnd   = ( x == -1 ) ? b.getParam<int>( "xEnd" )   : x;
@@ -535,6 +762,14 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
     int xDir   = ( x == -1 ) ? 0 : ( ( x > 1 ) ? -1 : 1 );
     int yDir   = ( y == -1 ) ? 0 : ( ( y > 1 ) ? -1 : 1 );
     int zDir   = ( z == -1 ) ? 0 : ( ( z > 1 ) ? -1 : 1 );
+    int f = 0;
+    for ( int i = 0; i < Dim; ++i ) {
+      if ( ex[i] == xDir && ey[i] == yDir && ez[i] == zDir ) {
+        f = i;
+        break;
+      }
+    }
+    assert( f > 0 );
     assert( xStart > 0 && xEnd < flag_.getSizeX() - 1 &&
             yStart > 0 && yEnd < flag_.getSizeY() - 1 &&
             zStart > 0 && zEnd < flag_.getSizeZ() - 1 );
@@ -544,7 +779,7 @@ inline void LBM<T>::setupBoundary( ConfBlock& block, int x, int y, int z ) {
           assert( flag_( x, y, z ) == UNDEFINED );
           flag_( x, y, z ) = OUTFLOW;
           outflowCells_.push_back( Vec3<int>( x, y, z ) );
-          outflowDirs_.push_back( Vec3<int>( xDir, yDir, zDir ) );
+          outflowDFs_.push_back( f );
         }
       }
     }
@@ -601,6 +836,7 @@ inline void LBM<T>::collideStream( int x, int y, int z ) {
   }
 }
 
+#ifndef NSMAGO
 template<typename T>
 inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z ) {
 
@@ -664,7 +900,7 @@ inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z ) {
     qo += qadd * qadd;
   }
   qo *= 2.;
-  for ( int i = 4; i < 6; ++i ) {
+  for ( int i = 3; i < 6; ++i ) {
     T qadd = 0.;
     for ( int f = 7; f < 19; ++f ) {
       qadd += ep[i][f] * ( (*grid0_)( x, y, z, f ) - feq[f] );
@@ -686,6 +922,7 @@ inline void LBM<T>::collideStreamSmagorinsky( int x, int y, int z ) {
       =   omegai * (*grid0_)( x, y, z, f ) + omega * feq[f];
   }
 }
+#endif
 
 template<typename T>
 inline void LBM<T>::treatNoslip() {
@@ -795,14 +1032,12 @@ inline void LBM<T>::treatOutflow() {
     int y = outflowCells_[i][1];
     int z = outflowCells_[i][2];
     // Fetch outflow direction
-    int xDir = outflowDirs_[i][0];
-    int yDir = outflowDirs_[i][1];
-    int zDir = outflowDirs_[i][2];
+    int d = outflowDFs_[i];
 
     // Go over all distribution values, and copy the distribution values from
     // the neighboring cell in outflow direction
     for ( int f = 1; f < Dim; ++f ) {
-      (*grid1_)( x - xDir, y - yDir, z - zDir, f ) = (*grid1_)( x, y, z, f );
+      (*grid1_)( x - ex[d], y - ey[d], z - ez[d], f ) = (*grid1_)( x, y, z, f );
     }
   }
 }
@@ -811,13 +1046,14 @@ template<typename T>
 inline void LBM<T>::treatPressure() {
 
   // Iterate over all pressure boundary cells
-  std::vector< Vec3<int> >::iterator iter;
-  for( iter = pressureCells_.begin(); iter != pressureCells_.end(); iter++ ) {
+  for( int i = 0; i < pressureCells_.size(); ++i ) {
 
     // Fetch coordinates of current boundary cell
-    int x = (*iter)[0];
-    int y = (*iter)[1];
-    int z = (*iter)[2];
+    int x = pressureCells_[i][0];
+    int y = pressureCells_[i][1];
+    int z = pressureCells_[i][2];
+    // Fetch outflow direction
+    int f = pressureDFs_[i];
     // Fetch velocity of current boundary cell
     T ux = u_( x, y, z, 0 );
     T uy = u_( x, y, z, 1 );
@@ -825,27 +1061,40 @@ inline void LBM<T>::treatPressure() {
 
     // Calculate pressure corrected equilibrium distribution functions for
     // atmospheric pressure and set as distribution values of the pressure cell
-    T fc = 2. - 3. * ( ux * ux + uy * uy + uz * uz );
-    (*grid1_)( x, y, z, 0 )  = (1./3.)  *   fc                                    - (*grid1_)( x, y, z, finv[0] ); // C
-    (*grid1_)( x, y, z, 1 )  = (1./18.) * ( fc + 9. *   uy        *   uy )        - (*grid1_)( x, y, z, finv[1] ); // N
-    (*grid1_)( x, y, z, 2 )  = (1./18.) * ( fc + 9. *   ux        *   ux )        - (*grid1_)( x, y, z, finv[2] ); // E
-    (*grid1_)( x, y, z, 3 )  = (1./18.) * ( fc + 9. *   uy        *   uy )        - (*grid1_)( x, y, z, finv[3] ); // S
-    (*grid1_)( x, y, z, 4 )  = (1./18.) * ( fc + 9. *   ux        *   ux )        - (*grid1_)( x, y, z, finv[4] ); // W
-    (*grid1_)( x, y, z, 5 )  = (1./18.) * ( fc + 9. *   uz        *   uz )        - (*grid1_)( x, y, z, finv[5] ); // T
-    (*grid1_)( x, y, z, 6 )  = (1./18.) * ( fc + 9. *   uz        *   uz )        - (*grid1_)( x, y, z, finv[6] ); // B
-    (*grid1_)( x, y, z, 7 )  = (1./36.) * ( fc + 9. * ( ux + uy ) * ( ux + uy ) ) - (*grid1_)( x, y, z, finv[7] ); // NE
-    (*grid1_)( x, y, z, 8 )  = (1./36.) * ( fc + 9. * ( ux - uy ) * ( ux - uy ) ) - (*grid1_)( x, y, z, finv[8] ); // SE
-    (*grid1_)( x, y, z, 9 )  = (1./36.) * ( fc + 9. * ( ux + uy ) * ( ux + uy ) ) - (*grid1_)( x, y, z, finv[9] ); // SW
-    (*grid1_)( x, y, z, 10 ) = (1./36.) * ( fc + 9. * ( ux - uy ) * ( ux - uy ) ) - (*grid1_)( x, y, z, finv[10] ); // NW
-    (*grid1_)( x, y, z, 11 ) = (1./36.) * ( fc + 9. * ( uy + uz ) * ( uy + uz ) ) - (*grid1_)( x, y, z, finv[11] ); // TN
-    (*grid1_)( x, y, z, 12 ) = (1./36.) * ( fc + 9. * ( ux + uz ) * ( ux + uz ) ) - (*grid1_)( x, y, z, finv[12] ); // TE
-    (*grid1_)( x, y, z, 13 ) = (1./36.) * ( fc + 9. * ( uy - uz ) * ( uy - uz ) ) - (*grid1_)( x, y, z, finv[13] ); // TS
-    (*grid1_)( x, y, z, 14 ) = (1./36.) * ( fc + 9. * ( ux - uz ) * ( ux - uz ) ) - (*grid1_)( x, y, z, finv[14] ); // TW
-    (*grid1_)( x, y, z, 15 ) = (1./36.) * ( fc + 9. * ( uy - uz ) * ( uy - uz ) ) - (*grid1_)( x, y, z, finv[15] ); // BN
-    (*grid1_)( x, y, z, 16 ) = (1./36.) * ( fc + 9. * ( ux - uz ) * ( ux - uz ) ) - (*grid1_)( x, y, z, finv[16] ); // BE
-    (*grid1_)( x, y, z, 17 ) = (1./36.) * ( fc + 9. * ( uy + uz ) * ( uy + uz ) ) - (*grid1_)( x, y, z, finv[17] ); // BS
-    (*grid1_)( x, y, z, 18 ) = (1./36.) * ( fc + 9. * ( ux + uz ) * ( ux + uz ) ) - (*grid1_)( x, y, z, finv[18] ); // BW
+    T eiu = ex[f] * ux + ey[f] * uy + ez[f] * uz;
+    T fc = w[f] * ( 2. - 3. * ( ux * ux + uy * uy + uz * uz ) + 9. * eiu * eiu );
+    (*grid1_)( x, y, z, f )       = fc - (*grid1_)( x, y, z, finv[f] );
+    (*grid1_)( x, y, z, finv[f] ) = fc - (*grid1_)( x, y, z, f );
   }
+}
+
+template<typename T>
+inline void LBM<T>::treatCurved() {
+
+  // Iterate over all curved boundary cells
+  for ( uint i = 0; i < curvedCells_.size(); ++i ) {
+    int x = curvedCells_[i][0];
+    int y = curvedCells_[i][1];
+    int z = curvedCells_[i][2];
+    // Go over all lattice links
+    for ( int f = 1; f < Dim; ++f ) {
+      T delta = curvedDeltas_[i][f];
+      // Check whether lattice link crossed obstacle boundary
+      if ( delta < 0 ) {
+        continue;
+      }
+/*      (*grid1_)( x - ex[f], y - ey[f], z - ez[f], finv[f] ) = (1. / 1. + delta) * (
+        delta * (   (*grid1_)( x - 2 * ex[f], y - 2 * ey[f], z - 2 * ez[f], finv[f] )
+                  + (*grid1_)( x, y, z, f ) )
+        + (1. - delta) * (*grid1_)( x - ex[f], y - ey[f], z - ez[f], f ) );*/
+
+      (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f ) = ( 1. / ( 1. + delta) ) * (
+        delta * (   (*grid1_)( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], f )
+            + (*grid1_)( x, y, z, finv[f] ) )
+            + (1. - delta) * (*grid1_)( x + ex[f], y + ey[f], z + ez[f], finv[f] ) );
+    }
+  }
+
 }
 
 template<>

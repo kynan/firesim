@@ -37,7 +37,8 @@ enum Flag {
 
 //! Lattice Boltzmann Method fluid solver
 
-//! Uses the BGK collision model and Smagorinsky turbulence correction.
+//! Uses the BGK collision model and Smagorinsky turbulence correction. The
+//! coordinate system used is left-handed, i.e. screen coordinates
 //!
 //! The following boundary conditions are implemented:
 //! - \em no-slip  Bounce back condition (fixed wall)
@@ -63,8 +64,8 @@ enum Flag {
 //!                           appended by current timestep and .vtk extension)
 //!  - \b vtkStep     \em int    Number of timesteps in between 2 vtk file outputs
 //! - \em boundaries Specifies the boundary conditions, contains a subblock for
-//!                  each side of the domain (\em bottom, \em top, \em north,
-//!                  \em south, \em east, \em west) which in turn can contain
+//!                  each side of the domain (\em bottom, \em top, \em back,
+//!                  \em front, \em left, \em right) which in turn can contain
 //!                  1 or more of the following subblocks to specify the type of
 //!                  boundary condition.
 //!  - \em noslip   Bounce back condition (fixed wall)
@@ -81,19 +82,19 @@ enum Flag {
 //!  .
 //!  Every boundary block needs to specify the coordinates of the rectangular
 //!  patch, where the fixed coordinate is implicitly set and needs not to be
-//!  specified (i.e. \e z for \e bottom and \e top, \e y for \e north and \e
-//!  south and \e x for \e east and \e west.
-//!  - \b xStart \e int Start cell in x-direction (not required for \e east and \e west)
-//!  - \b xEnd   \e int End cell in x-direction (not required for \e east and \e west)
-//!  - \b yStart \e int Start cell in y-direction (not required for \e north and \e south)
-//!  - \b yEnd   \e int End cell in y-direction (not required for \e north and \e south)
-//!  - \b zStart \e int Start cell in z-direction (not required for \e bottom and \e top)
-//!  - \b zEnd   \e int End cell in z-direction (not required for \e bottom and \e top)
+//!  specified (i.e. \e y for \e bottom and \e top, \e z for \e back and \e
+//!  front and \e x for \e left and \e right.
+//!  - \b xStart \e int Start cell in x-direction (not required for \e left and \e right)
+//!  - \b xEnd   \e int End cell in x-direction (not required for \e left and \e right)
+//!  - \b yStart \e int Start cell in y-direction (not required for \e bottom and \e top)
+//!  - \b yEnd   \e int End cell in y-direction (not required for \e bottom and \e top)
+//!  - \b zStart \e int Start cell in z-direction (not required for \e back and \e front)
+//!  - \b zEnd   \e int End cell in z-direction (not required for \e back and \e front)
 //!  .
 //!  Boundary cells that are not specified are implicitly set to \e noslip. An
 //!  error is thrown if a boundary cell is specified twice. \e bottom and \e top
-//!  have priority over \e north and \e south which in turn have priority over
-//!  \e east and \e west, i.e. the edges of the rectangle are added to the
+//!  have priority over \e back and \e front which in turn have priority over
+//!  \e left and \e right, i.e. the edges of the rectangle are added to the
 //!  boundary regions according to these priorities given.
 //!
 //! Example configuration file:
@@ -120,22 +121,22 @@ enum Flag {
 //!     outflow {
 //!       xStart  1;
 //!       xEnd   60;
-//!       yStart  1;
-//!       yEnd   60;
+//!       zStart  1;
+//!       zEnd   60;
 //!     }
 //!   }
 //!   bottom {
 //!     inflow {
 //!       xStart 26;
 //!       xEnd 35;
-//!       yStart 26;
-//!       yEnd 35;
+//!       zStart 26;
+//!       zEnd 35;
 //!       u_x 0.0;
 //!       u_y 0.0;
 //!       u_z 0.1;
 //!     }
 //!   }
-//!   west {
+//!   left {
 //!     inflow {
 //!       zStart 2;
 //!       zEnd 59;
@@ -146,7 +147,7 @@ enum Flag {
 //!       u_z 0.0;
 //!     }
 //!   }
-//!   east {
+//!   right {
 //!     outflow {
 //!       zStart 2;
 //!       zEnd 59;
@@ -154,20 +155,20 @@ enum Flag {
 //!       yEnd 59;
 //!     }
 //!   }
-//!   north {
+//!   back {
 //!     outflow {
 //!       xStart 1;
 //!       xEnd 60;
-//!       zStart 2;
-//!       zEnd 59;
+//!       yStart 2;
+//!       yEnd 59;
 //!     }
 //!   }
-//!   south {
+//!   front {
 //!     outflow {
 //!       xStart 1;
 //!       xEnd 60;
-//!       zStart 2;
-//!       zEnd 59;
+//!       yStart 2;
+//!       yEnd 59;
 //!     }
 //!   }
 //! }
@@ -183,7 +184,11 @@ public:
   // Constructors and destructors //
   // ============================ //
 
-  LBM() {}
+  //! Default constructor
+
+  //! Does no initialization.
+
+  LBM() : curStep_( 0 ) {}
 
   //! Constructor
 
@@ -221,7 +226,17 @@ public:
 
   double runStep();
 
+  //! Get tri-linearly interpolated velocity at given position
+
+  //! \param[in] x x-coordinate of position to get velocity
+  //! \param[in] y y-coordinate of position to get velocity
+  //! \param[in] z z-coordinate of position to get velocity
+
   inline Vec3<T> getVelocity( T x, T y, T z );
+
+  //! Get tri-linearly interpolated velocity at given position
+
+  //! \param[in] v 3-component vector (x,y,z) of position to get velocity
 
   inline Vec3<T> getVelocity( const Vec3<T>& v ) {
     return getVelocity( v[0], v[1], v[2] );
@@ -230,8 +245,8 @@ public:
   //! Setup the solver by processing configuration file
 
   //! Initializes the geometry of the domain and the boundaries according to the
-  //! configuration file given.
-  //! \param[in] configFileName Path to configuration file
+  //! configuration given.
+  //! \param[in] base Root block of parsed configuration file
 
   void setup( ConfBlock& base );
 
@@ -244,7 +259,13 @@ protected:
   //! Process a boundary block
 
   //! \param[in] block Boundary block to process (either \e bottom, \e top, \e
-  //!                  north, \e south, \e east, \e west)
+  //!                  back, \e front, \e right, \e left)
+  //! \param[in] x     Either fixed value for x-coordinate or -1 to read range
+  //!                  from configuration
+  //! \param[in] y     Either fixed value for y-coordinate or -1 to read range
+  //!                  from configuration
+  //! \param[in] z     Either fixed value for z-coordinate or -1 to read range
+  //!                  from configuration
 
   inline void setupBoundary( ConfBlock& block, int x, int y, int z );
 
@@ -261,19 +282,18 @@ protected:
   //! \param[in] x Cell coordinate for dimension x
   //! \param[in] y Cell coordinate for dimension y
   //! \param[in] z Cell coordinate for dimension z
-  //! \param[in] omega Inverse lattice velocity
 
   inline void collideStream( int x, int y, int z );
 
+#ifndef NSMAGO
   //! Perform a collide-stream step with turbulence correction
 
   //! \param[in] x Cell coordinate for dimension x
   //! \param[in] y Cell coordinate for dimension y
   //! \param[in] z Cell coordinate for dimension z
-  //! \param[in] nu Lattice viscosity
-  //! \param[in] cSqr Squared Smagorinsky constant
 
   inline void collideStreamSmagorinsky( int x, int y, int z );
+#endif
 
   //! Treat the no-slip boundary cells
 
@@ -295,10 +315,13 @@ protected:
 
   inline void treatPressure();
 
+  //! Treat the curved boundary cells
+
+  inline void treatCurved();
+
   //! Write out the VTK file for a given timestep
 
   //! \note Output is in binary VTK legacy file format
-  //! \param[in] timestep Current simulation step
 
   void writeVtkFile();
 
@@ -383,11 +406,23 @@ protected:
 
   //! List with outflow directions for all outflow cells
 
-  std::vector< Vec3<int> > outflowDirs_;
+  std::vector< int > outflowDFs_;
 
   //! List with coordinates of all pressure cells
 
   std::vector< Vec3<int> > pressureCells_;
+
+  //! List with outflow directions for all pressure cells
+
+  std::vector< int > pressureDFs_;
+
+  //! List with coordinates of all curved boundary cells
+
+  std::vector< Vec3<int> > curvedCells_;
+
+  //! List with fluid fractions for all lattice links of curved boundary cells
+
+  std::vector< std::vector<T> > curvedDeltas_;
 
 };
 
@@ -408,8 +443,5 @@ template<>
 void LBM<float>::writeVtkFile();
 
 } // namespace lbm
-
-// Include the definitions
-#include "LBM_def.h"
 
 #endif /* LBM_H_ */

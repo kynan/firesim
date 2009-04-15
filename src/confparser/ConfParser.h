@@ -20,7 +20,7 @@ namespace confparser {
   //! Exception class for syntax errors
 
   //! Is capable of providing information about the file  and the line where
-  //! the syntax error occured as well as a description of the error
+  //! the syntax error occured as well as a description of the error.
 
   class BadSyntax : public std::logic_error {
 
@@ -32,7 +32,7 @@ namespace confparser {
 
     //! Default constructor
 
-    //! Sets no specific information
+    //! Sets no specific information.
 
     BadSyntax() throw()
         : std::logic_error( "Syntax error occured" ),
@@ -43,7 +43,7 @@ namespace confparser {
     //! Constructor
 
     //! Sets information about file and line of error occurrence as well as an
-    //! error description
+    //! error description.
 
     BadSyntax( const std::string file, const int line, const std::string error ) throw()
         : std::logic_error( "Syntax error occured in file " + file + " on line "
@@ -84,7 +84,7 @@ namespace confparser {
     // Data members //
     // ============ //
 
-    //! File where with erroneous syntax
+    //! File with erroneous syntax
 
     const std::string file_;
 
@@ -123,9 +123,7 @@ namespace confparser {
   //! ...
   //! \endcode
   //! The parsing result is a tree structure of ConfBlock objects and the actual
-  //! key-value pairs are stored in a std::map
-
-//  class ConfBlock;
+  //! key-value pairs are stored in a std::map.
 
   class ConfParser {
 
@@ -137,7 +135,7 @@ namespace confparser {
 
     //! Constructor
 
-    //! Initializes root as empty block
+    //! Initializes root as empty block.
 
     ConfParser() : outermost_() {}
 
