@@ -166,6 +166,8 @@ double LBM<T>::runStep() {
 
   gettimeofday(&end, NULL);
 
+  moveSphere();
+
   // exchange grids for current and previous time step
   Grid<T, Dim> *gridTmp = grid0_;
   grid0_ = grid1_;
@@ -451,16 +453,22 @@ void LBM<T>::setup( ConfBlock& base ) {
         T r2 = radius * radius;
         // Get bounding box of sphere
         T zStart = floor( zCenter - radius ) + .5;
+        if ( zStart > sizeZ - .5) continue;
         if ( zStart < 1.5 ) zStart = 1.5;
         T zEnd   = floor( zCenter + radius ) + .5;
+        if ( zEnd < 1.5 ) continue;
         if ( zEnd > sizeZ - .5) zEnd = sizeZ - .5;
         T yStart = floor( yCenter - radius ) + .5;
+        if ( yStart > sizeY - .5) continue;
         if ( yStart < 1.5 ) yStart = 1.5;
         T yEnd   = floor( yCenter + radius ) + .5;
+        if ( yEnd < 1.5 ) continue;
         if ( yEnd > sizeY - .5) yEnd = sizeY - .5;
         T xStart = floor( xCenter - radius ) + .5;
+        if ( xStart > sizeX - .5) continue;
         if ( xStart < 1.5 ) xStart = 1.5;
         T xEnd   = floor( xCenter + radius ) + .5;
+        if ( xEnd < 1.5 ) continue;
         if ( xEnd > sizeX - .5) xEnd = sizeX - .5;
 
         // Go over cubic bounding box of sphere and check which cells are inside
@@ -508,6 +516,27 @@ void LBM<T>::setup( ConfBlock& base ) {
                 }
               }
             }
+      }
+
+      bit = paramBlock->findAll( "sphere_moving" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        T xCenter = bl.getParam<T>( "xCenter" );
+        T yCenter = bl.getParam<T>( "yCenter" );
+        T zCenter = bl.getParam<T>( "zCenter" );
+        T radius  = bl.getParam<T>( "radius" );
+        T u_x  = bl.getParam<T>( "u_x" );
+        T u_y  = bl.getParam<T>( "u_y" );
+        T u_z  = bl.getParam<T>( "u_z" );
+
+        std::cout << "Moving sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << " and u=<" << u_x << "," << u_y << "," << u_z << ">";
+        std::cout << std::endl;
+
+        sphereObstacles_.push_back( Sphere<T>( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z ) );
       }
 
       bit = paramBlock->findAll( "sphere_staircase" );
@@ -1095,6 +1124,94 @@ inline void LBM<T>::treatCurved() {
     }
   }
 
+}
+
+#define DIST(x,y,z) ((x) - xCenter) * ((x) - xCenter) + ((y) - yCenter) * ((y) - yCenter) + ((z) - zCenter) * ((z) - zCenter)
+template<typename T>
+inline void LBM<T>::moveSphere() {
+
+  for ( int i = 0; i < sphereObstacles_.size(); ++i ) {
+
+    T xCenter = sphereObstacles_[i].x;
+    T yCenter = sphereObstacles_[i].y;
+    T zCenter = sphereObstacles_[i].z;
+    T u_x = sphereObstacles_[i].u_x;
+    T u_y = sphereObstacles_[i].u_y;
+    T u_z = sphereObstacles_[i].u_z;
+    T radius = sphereObstacles_[i].r;
+    std::cout << curStep_ << ": sphere " << i << " with center <" << xCenter;
+    std::cout << "," << yCenter << "," << zCenter << "> and radius " << radius;
+    std::cout << std::endl;
+    T r2 = radius * radius;
+    // Get bounding box of sphere
+    T zStart = floor( zCenter - radius ) + .5;
+    if ( zStart > flag_.getSizeZ() - .5) continue;
+    if ( zStart < 1.5 ) zStart = 1.5;
+    T zEnd   = floor( zCenter + radius ) + .5;
+    if ( zEnd < 1.5 ) continue;
+    if ( zEnd > flag_.getSizeZ() - .5) zEnd = flag_.getSizeZ() - .5;
+    T yStart = floor( yCenter - radius ) + .5;
+    if ( yStart > flag_.getSizeY() - .5) continue;
+    if ( yStart < 1.5 ) yStart = 1.5;
+    T yEnd   = floor( yCenter + radius ) + .5;
+    if ( yEnd < 1.5 ) continue;
+    if ( yEnd > flag_.getSizeY() - .5) yEnd = flag_.getSizeY() - .5;
+    T xStart = floor( xCenter - radius ) + .5;
+    if ( xStart > flag_.getSizeX() - .5) continue;
+    if ( xStart < 1.5 ) xStart = 1.5;
+    T xEnd   = floor( xCenter + radius ) + .5;
+    if ( xEnd < 1.5 ) continue;
+    if ( xEnd > flag_.getSizeX() - .5) xEnd = flag_.getSizeX() - .5;
+/*    std::cout << "Bounding box <" << xStart << "," << yStart << "," << zStart;
+    std::cout << "> to <" << xEnd << "," << yEnd << "," << zEnd << ">" << std::endl;*/
+
+    // Go over bounding box and check which cells are actually boundary cells
+    for ( int z = zStart; z < zEnd; ++z )
+      for ( int y = yStart; y < yEnd; ++y )
+        for ( int x = xStart; x < xEnd; ++x ) {
+          // Check if cell is potential boundary cell
+/*          std::cout << "Point <" << x + 0.5 << "," << y + 0.5 << "," << z + 0.5;
+          std::cout << ">, dist " << DIST(x + 0.5, y + 0.5, z + 0.5) << std::endl;*/
+          if ( DIST(x + 0.5, y + 0.5, z + 0.5) > r2 ) continue;
+          // Go over all velocity directions
+          for (int f = 1; f < Dim; ++f ) {
+            if ( DIST( x + ex[f] + 0.5, y + ey[f] + 0.5, z + ez[f] + 0.5 ) > r2 ) {
+              T xd = xCenter - (x + .5);
+              T yd = yCenter - (y + .5);
+              T zd = zCenter - (z + .5);
+              T b = exn[f] * xd + eyn[f] * yd + ezn[f] * zd;
+              T c = xd * xd + yd * yd + zd * zd - r2;
+              assert( b*b >= c );
+              T deltai = ( b + sqrt( b * b - c ) ) / le[f];
+              T delta = 1.0 - deltai;
+              T rho = 6 * rho_(x, y, z);
+//              T rho = 6 * delta * (
+//                    delta  * ( rho_(x, y, z) * delta + rho_(x, y, z + ez[f]) * deltai )
+//                  + deltai * ( rho_(x, y + ey[f], z) * delta + rho_(x, y + ey[f], z + ez[f]) * deltai )
+//                                  ) + deltai * (
+//                    delta  * ( rho_(x + ex[f], y, z) * delta + rho_(x + ex[f], y, z + ez[f]) * deltai )
+//                  + deltai * ( rho_(x + ex[f], y + ey[f], z) * delta + rho_(x + ex[f], y + ey[f], z + ez[f]) * deltai )
+//                                           );
+
+//               std::cout << "Cell <" << x << "," << y << "," << z;
+//               std::cout << ">, DF " << f << ", delta " << delta << std::endl;
+//               T tmp1 = delta * (   (*grid1_)( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], f )
+//                   + (*grid1_)( x, y, z, finv[f] ) )
+//                   + (1. - delta) * (*grid1_)( x + ex[f], y + ey[f], z + ez[f], finv[f] );
+//               T tmp2 = w[f] * rho * ( u_x * ex[f] + u_y * ey[f] + u_z * ez[f]);
+//               std::cout << "Cell <" << x << "," << y << "," << z;
+//               std::cout << ">, DF " << f << ", delta " << delta << ", " << tmp1 << "/" << tmp2 << std::endl;
+              (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f ) = ( 1. / ( 1. + delta) ) * (
+                delta * (   (*grid1_)( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], f )
+                    + (*grid1_)( x, y, z, finv[f] ) )
+                    + (1. - delta) * (*grid1_)( x + ex[f], y + ey[f], z + ez[f], finv[f] ) );
+//                     + w[f] * rho * ( u_x * ex[f] + u_y * ey[f] + u_z * ez[f]) );
+            }
+          }
+        }
+
+    sphereObstacles_[i].move();
+  }
 }
 
 template<>

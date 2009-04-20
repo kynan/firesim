@@ -25,6 +25,29 @@ using namespace confparser;
 
 namespace lbm {
 
+template<typename T>
+struct Sphere {
+
+  Sphere( T _x, T _y, T _z, T _r, T _u_x, T _u_y, T _u_z ) :
+      x(_x), y(_y), z(_z), r(_r), u_x(_u_x), u_y(_u_y), u_z(_u_z) {}
+
+  void move() {
+    x += u_x;
+    y += u_y;
+    z += u_z;
+  }
+
+  T x;
+  T y;
+  T z;
+  T r;
+  T u_x;
+  T u_y;
+  T u_z;
+};
+
+//! Enum describing possible states of a cell
+
 enum Flag {
   UNDEFINED = 0,
   FLUID     = 1,
@@ -319,6 +342,8 @@ protected:
 
   inline void treatCurved();
 
+  inline void moveSphere();
+
   //! Write out the VTK file for a given timestep
 
   //! \note Output is in binary VTK legacy file format
@@ -379,6 +404,8 @@ protected:
   //! Flag field
 
   Grid<Flag,1> flag_;
+
+  std::vector< Sphere<T> > sphereObstacles_;
 
   //! List with coordinates of all noslip cells
 
