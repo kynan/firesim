@@ -22,7 +22,14 @@ namespace particles {
 
 struct Sphere {
 
-  Sphere( float x, float y, float z, float radius, float u_x, float u_y, float u_z, scene::IMeshSceneNode* n = 0 ) :
+  Sphere( float x,
+          float y,
+          float z,
+          float radius,
+          float u_x = 0.0,
+          float u_y = 0.0,
+          float u_z = 0.0,
+          scene::IMeshSceneNode* n = 0 ) :
       pos( x, y, z ), r( radius ), u( u_x, u_y, u_z ), node( n ) {}
 
   void move() {

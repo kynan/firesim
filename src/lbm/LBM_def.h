@@ -480,7 +480,7 @@ void LBM<T>::setup( ConfBlock& base ) {
                    + (y - yCenter) * (y - yCenter)
                    + (z - zCenter) * (z - zCenter) < r2 ) {
                 flag_( (int) x, (int) y, (int) z ) = NOSLIP;
-                std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+//                 std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
               }
             }
         // Go over bounding box again and check which cells are actually
@@ -505,12 +505,12 @@ void LBM<T>::setup( ConfBlock& base ) {
                   }
                 }
                 if ( isBoundary ) {
-                  std::cout << "Fluid fractions for lattice links of boundary cell <";
-                  std::cout << x << "," << y << "," << z << ">:\n[ ";
-                  for ( uint i = 0; i < delta.size(); ++i ) {
-                    std::cout << delta[i] << " ";
-                  }
-                  std::cout << "]" << std::endl;
+//                   std::cout << "Fluid fractions for lattice links of boundary cell <";
+//                   std::cout << x << "," << y << "," << z << ">:\n[ ";
+//                   for ( uint i = 0; i < delta.size(); ++i ) {
+//                     std::cout << delta[i] << " ";
+//                   }
+//                   std::cout << "]" << std::endl;
                   curvedCells_.push_back( Vec3<int>( x, y, z ) );
                   curvedDeltas_.push_back( delta );
                 }
@@ -577,7 +577,7 @@ void LBM<T>::setup( ConfBlock& base ) {
                    + (z - zCenter) * (z - zCenter) < r2 ) {
                 flag_( (int) x, (int) y, (int) z ) = NOSLIP;
                 noslipCells_.push_back( Vec3<int>( (int) x, (int) y, (int) z ) );
-                std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+//                 std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
               }
             }
       }

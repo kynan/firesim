@@ -21,7 +21,7 @@ ParticleSystem::ParticleSystem ( std::string configFileName )
 
     srand ( time(NULL) );
 
-  } catch ( std::exception e ) {
+  } catch ( std::exception& e ) {
     std::cerr << e.what() << std::endl;
     exit( -1 );
   } catch ( const char* e ) {
@@ -78,65 +78,6 @@ void ParticleSystem::setup( ConfBlock& base ) {
       gaussTable_.push_back( a * exp(-  i * i / 2. ) );
     }
 
-    // Set up povray output
-    paramBlock = base.find( "povray" );
-    if ( paramBlock != NULL ) {
-      povFileName_ = paramBlock->getParam<std::string>( "povFileName" );
-      std::cout << "Povray output specification:" << std::endl;
-      std::cout << "Povray output file base name : " << povFileName_ << std::endl;
-    } else {
-      std::cout << "No povray block given in configuration file, no output will be created." << std::endl;
-      povFileName_ = "";
-    }
-
-    // Set up bounding boxes of obstacles
-    paramBlock = base.find( "obstacles" );
-    if ( paramBlock == NULL ) {
-      std::cout << "No obstacles defined." << std::endl;
-    } else {
-
-      std::cout << "Set up the obstacles..." << std::endl;
-
-      ConfBlock::childIterPair bit = paramBlock->findAll( "cuboid_stationary" );
-      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
-
-        ConfBlock& b = it->second;
-
-        int xStart = b.getParam<int>( "xStart" );
-        int xEnd   = b.getParam<int>( "xEnd" ) + 1;
-        int yStart = b.getParam<int>( "yStart" );
-        int yEnd   = b.getParam<int>( "yEnd" ) + 1;
-        int zStart = b.getParam<int>( "zStart" );
-        int zEnd   = b.getParam<int>( "zEnd" ) + 1;
-        std::cout << "Stationary cuboid ranging from <" << xStart << ",";
-        std::cout << yStart << "," << zStart << "> to <" << xEnd << "," << yEnd;
-        std::cout << "," << zEnd << ">" << std::endl;
-        obstacles_.push_back(
-            core::aabbox3df( xStart, yStart, zStart, xEnd, yEnd, zEnd ) );
-      }
-
-      bit = paramBlock->findAll( "sphere_moving" );
-      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
-
-        ConfBlock& bl = it->second;
-
-        float xCenter = bl.getParam<float>( "xCenter" );
-        float yCenter = bl.getParam<float>( "yCenter" );
-        float zCenter = bl.getParam<float>( "zCenter" );
-        float radius  = bl.getParam<float>( "radius" );
-        float u_x  = bl.getParam<float>( "u_x" );
-        float u_y  = bl.getParam<float>( "u_y" );
-        float u_z  = bl.getParam<float>( "u_z" );
-
-        std::cout << "Moving sphere centered at <" << xCenter << ",";
-        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
-        std::cout << " and u=<" << u_x << "," << u_y << "," << u_z << ">";
-        std::cout << std::endl;
-
-        spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z ) );
-      }
-    }
-
     // Set up particle system
     paramBlock = base.find( "particles" );
     if ( paramBlock == NULL ) throw "No particle emitters specified.";
@@ -174,7 +115,7 @@ void ParticleSystem::setup( ConfBlock& base ) {
       std::cout << "lifetimeCoeff : " << lifetimeCoeff << std::endl;
 
       emitters_.push_back( Emitter( core::vector3df( xStart, yStart, zStart ),
-                                    core::vector3df( xEnd - xStart, yEnd - yStart, zEnd - zStart ),
+                           core::vector3df( xEnd - xStart, yEnd - yStart, zEnd - zStart ),
                                             temp,
                                             fuel,
                                             emitThreshold,
@@ -183,11 +124,21 @@ void ParticleSystem::setup( ConfBlock& base ) {
 
     }
 
+    // Set up povray output
+    paramBlock = base.find( "povray" );
+    if ( paramBlock != NULL ) {
+      povFileName_ = paramBlock->getParam<std::string>( "povFileName" );
+      std::cout << "Povray output specification:" << std::endl;
+      std::cout << "Povray output file base name : " << povFileName_ << std::endl;
+    } else {
+      std::cout << "No povray block given in configuration file, no output will be created." << std::endl;
+      povFileName_ = "";
+    }
+
     // Set up irrlicht engine
     paramBlock = base.find( "irrlicht" );
     if ( paramBlock == NULL ) {
-      std::cout << "No irrlicht configuration specified in configuration file, no real-time visualization will ." << std::endl;
-      throw "No irrlicht configuration specified.";
+      std::cout << "No irrlicht configuration specified in configuration file. No real-time visualization will be done." << std::endl;
     } else {
       std::cout << "Set up irrlicht configuration..." << std::endl;
 
@@ -215,10 +166,130 @@ void ParticleSystem::setup( ConfBlock& base ) {
         textures_.push_back( drvr_->getTexture( file.c_str() ) );
       }
 
+      cip = paramBlock->findAll( "plane" );
+
+      for ( ConfBlock::childIter it = cip.first; it != cip.second; ++it ) {
+
+        ConfBlock b = it->second;
+
+        std::string name = b.getParam<std::string>( "name" );
+        std::string texture = b.getParam<std::string>( "texture" );
+        float sizeTile = b.getParam<float>( "sizeTile" );
+        int numTile = b.getParam<int>( "numTile" );
+        float xCenter = b.getParam<float>( "xCenter" );
+        float yCenter = b.getParam<float>( "yCenter" );
+        float zCenter = b.getParam<float>( "zCenter" );
+
+        // Create a terrain scenenode
+        scene::IAnimatedMesh *terrain_model = smgr_->addHillPlaneMesh( name.c_str(), // Name of the scenenode
+            core::dimension2d<f32>( sizeTile, sizeTile ), // Tile size
+                                   core::dimension2d<u32>(numTile, numTile), // Tile count
+                                       0, // Material
+                                       0.0f, // Hill height
+                                       core::dimension2d<f32>(0.0f, 0.0f), // countHills
+                                           core::dimension2d<f32>(numTile, numTile)); // textureRepeatCount
+
+        scene::IAnimatedMeshSceneNode* terrain_node = smgr_->addAnimatedMeshSceneNode(terrain_model);
+        terrain_node->setMaterialTexture(0, drvr_->getTexture( texture.c_str() ));
+        terrain_node->setMaterialFlag(video::EMF_LIGHTING, false);
+
+        // Insert it into the scene
+        terrain_node->setPosition(core::vector3df(xCenter,yCenter,zCenter));
+      }
+
       // Generate black body color table
       std::cout << "Generate black body color table..." << std::endl;
       generateBlackBodyColorTable( 2. * maxTemp );
 
+    }
+
+    // Set up bounding boxes of obstacles
+    paramBlock = base.find( "obstacles" );
+    if ( paramBlock == NULL ) {
+      std::cout << "No obstacles defined." << std::endl;
+    } else {
+
+      std::cout << "Set up the obstacles..." << std::endl;
+
+      ConfBlock::childIterPair bit = paramBlock->findAll( "cuboid_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& b = it->second;
+
+        int xStart = b.getParam<int>( "xStart" );
+        int xEnd   = b.getParam<int>( "xEnd" ) + 1;
+        int yStart = b.getParam<int>( "yStart" );
+        int yEnd   = b.getParam<int>( "yEnd" ) + 1;
+        int zStart = b.getParam<int>( "zStart" );
+        int zEnd   = b.getParam<int>( "zEnd" ) + 1;
+        std::cout << "Stationary cuboid ranging from <" << xStart << ",";
+        std::cout << yStart << "," << zStart << "> to <" << xEnd << "," << yEnd;
+        std::cout << "," << zEnd << ">" << std::endl;
+        obstacles_.push_back(
+            core::aabbox3df( xStart, yStart, zStart, xEnd, yEnd, zEnd ) );
+      }
+
+      bit = paramBlock->findAll( "sphere_stationary" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        float xCenter = bl.getParam<float>( "xCenter" );
+        float yCenter = bl.getParam<float>( "yCenter" );
+        float zCenter = bl.getParam<float>( "zCenter" );
+        float radius  = bl.getParam<float>( "radius" );
+
+        std::cout << "Stationary sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << std::endl;
+
+        // Add scene nodes for moving sphere
+        if ( device_ ) {
+          scene::IMeshSceneNode* mesh = smgr_->addSphereSceneNode( radius,
+              128,
+              0,
+              -1,
+              core::vector3df( xCenter, yCenter, zCenter ) );
+          mesh->setMaterialFlag( video::EMF_LIGHTING, false );
+          mesh->setMaterialTexture( 0, drvr_->getTexture( "../../textures/BlackMarble.jpg" ) );
+          spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, 0.0, 0.0, 0.0, mesh ) );
+        } else {
+          spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius ) );
+        }
+      }
+
+      bit = paramBlock->findAll( "sphere_moving" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        float xCenter = bl.getParam<float>( "xCenter" );
+        float yCenter = bl.getParam<float>( "yCenter" );
+        float zCenter = bl.getParam<float>( "zCenter" );
+        float radius  = bl.getParam<float>( "radius" );
+        float u_x  = bl.getParam<float>( "u_x" );
+        float u_y  = bl.getParam<float>( "u_y" );
+        float u_z  = bl.getParam<float>( "u_z" );
+
+        std::cout << "Moving sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << " and u=<" << u_x << "," << u_y << "," << u_z << ">";
+        std::cout << std::endl;
+
+        // Add scene nodes for moving sphere
+        if ( device_ ) {
+          scene::IMeshSceneNode* mesh = smgr_->addSphereSceneNode( radius,
+              128,
+              0,
+              -1,
+              core::vector3df( xCenter, yCenter, zCenter ) );
+          mesh->setMaterialFlag( video::EMF_LIGHTING, false );
+          mesh->setMaterialTexture( 0, drvr_->getTexture( "../../textures/BlackMarble.jpg" ) );
+          spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z, mesh ) );
+        } else {
+          spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z ) );
+        }
+      }
     }
 
   } catch ( std::exception e ) {
@@ -243,18 +314,6 @@ void ParticleSystem::run() {
     scene::ICameraSceneNode* camera =
         smgr_->addCameraSceneNodeFPS( 0, 100.0f, .3f );
     camera->setPosition(core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ));
-
-    // Add scene nodes for moving spheres
-    for ( int i = 0; i < spheres_.size(); ++i ) {
-      spheres_[i].node = smgr_->addSphereSceneNode( spheres_[i].r,
-                                                    128,
-                                                    0,
-                                                    -1,
-                                                    core::vector3df(spheres_[i].pos.X, spheres_[i].pos.Y, spheres_[i].pos.Z)
-                                                  );
-      spheres_[i].node->setMaterialFlag( video::EMF_LIGHTING, false );
-      spheres_[i].node->setMaterialTexture( 0, drvr_->getTexture( "../../textures/BlackMarble.jpg" ) );
-    }
 
   }
 
