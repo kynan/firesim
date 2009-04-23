@@ -63,6 +63,7 @@ public:
              int numSprites,
              float temp,
              video::SColor& color,
+             float size,
              int lifetime );
 
   //! Destructor
@@ -129,6 +130,18 @@ public:
   void setSize( float sz ) {
     for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setSize( core::dimension2df( sz, sz ) );
+    }
+  }
+
+  void setSmoke( float colorCoeff) {
+    type_ = SMOKE;
+
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
+      sprites_[i]->setMaterialType( video::EMT_TRANSPARENT_ALPHA_CHANNEL );
+      sprites_[i]->setColor( video::SColor( 255 * lifetime_ * colorCoeff,
+                                            255 * lifetime_ * colorCoeff,
+                                            255 * lifetime_ * colorCoeff,
+                                            255 * lifetime_ * colorCoeff ) );
     }
   }
 

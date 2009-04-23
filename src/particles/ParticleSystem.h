@@ -20,6 +20,22 @@ using namespace irr;
 
 namespace particles {
 
+struct Sphere {
+
+  Sphere( float x, float y, float z, float radius, float u_x, float u_y, float u_z, scene::IMeshSceneNode* n = 0 ) :
+      pos( x, y, z ), r( radius ), u( u_x, u_y, u_z ), node( n ) {}
+
+  void move() {
+    pos += u;
+    node->setPosition( pos );
+  }
+
+  core::vector3df pos;
+  float r;
+  core::vector3df u;
+  scene::IMeshSceneNode* node;
+};
+
 //! Particle system that handles creation, movement and visualization of
 //! particles.
 
@@ -160,6 +176,8 @@ protected:
 
   //! Vector of axis-aligned cuboid obstacles
   std::vector< core::aabbox3df > obstacles_;
+
+  std::vector< Sphere > spheres_;
 
   //! Base file name for povray output files
   std::string povFileName_;

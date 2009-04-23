@@ -114,6 +114,27 @@ void ParticleSystem::setup( ConfBlock& base ) {
         obstacles_.push_back(
             core::aabbox3df( xStart, yStart, zStart, xEnd, yEnd, zEnd ) );
       }
+
+      bit = paramBlock->findAll( "sphere_moving" );
+      for ( ConfBlock::childIter it = bit.first; it != bit.second; ++it ) {
+
+        ConfBlock& bl = it->second;
+
+        float xCenter = bl.getParam<float>( "xCenter" );
+        float yCenter = bl.getParam<float>( "yCenter" );
+        float zCenter = bl.getParam<float>( "zCenter" );
+        float radius  = bl.getParam<float>( "radius" );
+        float u_x  = bl.getParam<float>( "u_x" );
+        float u_y  = bl.getParam<float>( "u_y" );
+        float u_z  = bl.getParam<float>( "u_z" );
+
+        std::cout << "Moving sphere centered at <" << xCenter << ",";
+        std::cout << yCenter << "," << zCenter << "> with radius " << radius;
+        std::cout << " and u=<" << u_x << "," << u_y << "," << u_z << ">";
+        std::cout << std::endl;
+
+        spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z ) );
+      }
     }
 
     // Set up particle system
@@ -133,12 +154,6 @@ void ParticleSystem::setup( ConfBlock& base ) {
       float yEnd   = b.getParam<float>( "yEnd" );
       float zStart = b.getParam<float>( "zStart" );
       float zEnd   = b.getParam<float>( "zEnd" );
-      int xRange  = b.getParam<int>( "xRange" );
-      int yRange  = b.getParam<int>( "yRange" );
-      int zRange  = b.getParam<int>( "zRange" );
-      float dx = (xRange <= 1) ? 0. : ( xEnd - xStart ) / ( xRange - 1 );
-      float dy = (yRange <= 1) ? 0. : ( yEnd - yStart ) / ( yRange - 1 );
-      float dz = (zRange <= 1) ? 0. : ( zEnd - zStart ) / ( zRange - 1 );
       float temp   = b.getParam<float>( "temp" );
       if ( temp > maxTemp ) maxTemp = temp;
       int fuel    = b.getParam<int>( "fuel" );
@@ -152,33 +167,19 @@ void ParticleSystem::setup( ConfBlock& base ) {
       std::cout << "yEnd   : " << yEnd << std::endl;
       std::cout << "zStart : " << zStart << std::endl;
       std::cout << "zEnd   : " << zEnd << std::endl;
-      std::cout << "xRange : " << xRange << std::endl;
-      std::cout << "yRange : " << yRange << std::endl;
-      std::cout << "zRange : " << zRange << std::endl;
-      std::cout << "dx     : " << dx << std::endl;
-      std::cout << "dy     : " << dy << std::endl;
-      std::cout << "dz     : " << dz << std::endl;
       std::cout << "temp : " << temp << std::endl;
       std::cout << "fuel : " << fuel << std::endl;
       std::cout << "emitThreshold : " << emitThreshold << std::endl;
       std::cout << "fuelConsumption : " << fuelConsumption << std::endl;
       std::cout << "lifetimeCoeff : " << lifetimeCoeff << std::endl;
 
-      int i, j, k;
-      float x, y, z;
-      for ( z = zStart, i = 0; z <= zEnd && i < zRange; z += dz, ++i ) {
-        for ( y = yStart, j = 0; y <= yEnd && j < yRange; y += dy, ++j ) {
-          for ( x = xStart, k = 0; x <= xEnd && k < xRange; x += dx, ++k ) {
-            std::cout << "Create emiter at <" << x << "," << y << "," << z << ">" << std::endl;
-            emitters_.push_back( Emitter( core::vector3df( x, y, z ),
-                                             temp,
-                                             fuel,
-                                             emitThreshold,
-                                             fuelConsumption,
-                                             lifetimeCoeff ) );
-          }
-        }
-      }
+      emitters_.push_back( Emitter( core::vector3df( xStart, yStart, zStart ),
+                                    core::vector3df( xEnd - xStart, yEnd - yStart, zEnd - zStart ),
+                                            temp,
+                                            fuel,
+                                            emitThreshold,
+                                            fuelConsumption,
+                                            lifetimeCoeff ) );
 
     }
 
@@ -228,22 +229,40 @@ void ParticleSystem::setup( ConfBlock& base ) {
     exit( -1 );
   }
 
-  std::cout << "ParticleHandler setup finished!" << std::endl;
+  std::cout << "ParticleSystem setup finished!" << std::endl;
 }
 
 void ParticleSystem::run() {
 
-  // Add camera to scene
-  smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
-                             core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
-                             core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
+  if (device_) {
+    // Add camera to scene
+//   smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
+//                              core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
+//                              core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
 //  smgr_->addCameraSceneNodeFPS( smgr_->getRootSceneNode() );
+    scene::ICameraSceneNode* camera =
+        smgr_->addCameraSceneNodeFPS( 0, 100.0f, .3f );
+    camera->setPosition(core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ));
 
-  // Discard first 10 steps to initialize velocity field
-  for ( int i = 0; i < 10; ++i ) solver_.runStep();
-  int step = 10;
+    // Add scene nodes for moving spheres
+    for ( int i = 0; i < spheres_.size(); ++i ) {
+      spheres_[i].node = smgr_->addSphereSceneNode( spheres_[i].r,
+                                                    128,
+                                                    0,
+                                                    -1,
+                                                    core::vector3df(spheres_[i].pos.X, spheres_[i].pos.Y, spheres_[i].pos.Z)
+                                                  );
+      spheres_[i].node->setMaterialFlag( video::EMF_LIGHTING, false );
+      spheres_[i].node->setMaterialTexture( 0, drvr_->getTexture( "../../textures/BlackMarble.jpg" ) );
+    }
 
-  core::aabbox3df myBox = core::aabbox3df( 0,0,0,sizeX_,sizeY_,sizeZ_ );
+  }
+
+  // Discard first 20 steps to initialize velocity field
+  for ( int i = 0; i < 20; ++i ) solver_.runStep();
+  int step = 20;
+
+//   core::aabbox3df myBox = core::aabbox3df( 0,0,0,sizeX_,sizeY_,sizeZ_ );
   // Start the simulation loop
   while ( device_->run() ) {
 
@@ -255,7 +274,7 @@ void ParticleSystem::run() {
       // Draw all primitives
       drvr_->beginScene(true, true, video::SColor(255,0,0,0));
       smgr_->drawAll();
-      drvr_->draw3DBox( myBox, video::SColor(255,0,0,255) );
+//       drvr_->draw3DBox( myBox, video::SColor(255,0,0,255) );
 //      for ( int i = 0; i < obstacles_.size(); ++i ) {
 //        std::cout << "Drawing bounding box " << i << ": <" << obstacles_[i].MinEdge.X << "," << obstacles_[i].MinEdge.Y << "," << obstacles_[i].MinEdge.Z << "> - <" << obstacles_[i].MaxEdge.X << "," << obstacles_[i].MaxEdge.Y << "," << obstacles_[i].MaxEdge.Z << ">" << std::endl;
 //        drvr_->draw3DBox( obstacles_[i], video::SColor(255,0,0,255) );
@@ -280,6 +299,10 @@ void ParticleSystem::run() {
     solver_.runStep();
     // Update the particles
     updateParticles();
+    // Move the spheres
+    for ( int i = 0; i < spheres_.size(); ++i ) {
+      spheres_[i].move();
+    }
 
     // Check for end of simulation
     if ( ++step >= maxSteps_ ) break;
@@ -331,46 +354,76 @@ inline void ParticleSystem::updateParticles() {
 //      // If not, apply it
 //      if ( !inObstacle ) (*itp).updatePos( v + g );
 //      else (*itp).updatePos( v );
-      (*itp).updatePos( v + g );
+//       (*itp).updatePos( v );
       // DEBUG output
 //        std::cout << "Velocity after update: <" << (*itp).pos_[0] << "," << (*itp).pos_[1] << "," << (*itp).pos_[2] << ">" << std::endl;
 
-      if ( (*itp).type_ == FIRE ) {
+//       if ( (*itp).type_ == FIRE ) {
+//         (*itp).updatePos( v );
+//         // Update temperature
+//         float tempExt = - gaussTable_[0] * (*itp).temp_;
+//         // Add up temperature contributions of all other particles weighted by distance
+//         for ( ite2 = emitters_.begin(); ite2 != emitters_.end(); ++ite2 ) {
+//           for ( itp2 = (*ite2).particles_.begin(); itp2 != (*ite2).particles_.end(); ++itp2) {
+//             tempExt += gaussTable_[ (int) (*itp).dist( *itp2 ) ] * (*itp2).temp_;
+//           }
+//         }
+//         (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
+//         // DEBUG output
+// //          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
+// //          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
+//         assert( (int) (((*itp).temp_ - smokeTemp_) / 50.) < bbColorTable_.size() );
+//         (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
+//         // If temperature has fallen below threshold, convert to smoke particle
+//         if ( (*itp).temp_ < smokeTemp_ ) (*itp).setSmoke( szCoeff );
+// //           std::cout << "Particle with lifetime " << (*itp).lifetime_ << " turns to smoke." << std::endl;
+//       } else {
+//         (*itp).updatePos( v + g );
+//       }
+      (*itp).updatePos( v + g );
+
+      // Update lifetime and particle size
+//       if ( (*itp).lifetime_-- % 10 == 0 ) {
+        float sz = sizeBase_ + sizeVar_ * (*itp).lifetime_ * szCoeff;
+        (*itp).setSize( sz );
+        if ( (*itp).type_ == FIRE ) {
         // Update temperature
-        float tempExt = - gaussTable_[0] * (*itp).temp_;
+          float tempExt = - gaussTable_[0] * (*itp).temp_;
         // Add up temperature contributions of all other particles weighted by distance
-        for ( ite2 = emitters_.begin(); ite2 != emitters_.end(); ++ite2 ) {
-          for ( itp2 = (*ite2).particles_.begin(); itp2 != (*ite2).particles_.end(); ++itp2) {
-            tempExt += gaussTable_[ (int) (*itp).dist( *itp2 ) ] * (*itp2).temp_;
+          for ( ite2 = emitters_.begin(); ite2 != emitters_.end(); ++ite2 ) {
+            for ( itp2 = (*ite2).particles_.begin(); itp2 != (*ite2).particles_.end(); ++itp2) {
+              tempExt += gaussTable_[ (int) (*itp).dist( *itp2 ) ] * (*itp2).temp_;
+            }
           }
-        }
-        (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
+          (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
         // DEBUG output
 //          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
 //          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
-        (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
+
         // If temperature has fallen below threshold, convert to smoke particle
-        if ( (*itp).temp_ < smokeTemp_ ) {
-          (*itp).type_ = SMOKE;
-          (*itp).setColor( video::SColor( 255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff) ) );
+          if ( (*itp).temp_ < smokeTemp_ ) {
+            (*itp).setSmoke( szCoeff );
+          } else {
+            assert( (int) (((*itp).temp_ - smokeTemp_) / 50.) < bbColorTable_.size() );
+            if ( (int) (((*itp).temp_ - smokeTemp_) / 50.) < bbColorTable_.size() ) {
+              (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
+            } else {
+              std::cout << "Temperature too high: " << (*itp).temp_ << ", index:" << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
+            }
+          }
+//           std::cout << "Particle with lifetime " << (*itp).lifetime_ << " turns to smoke." << std::endl;
+        } else {
+          (*itp).setColor( video::SColor( 255 * (*itp).lifetime_ * szCoeff,
+            255 * (*itp).lifetime_ * szCoeff,
+                   255 * (*itp).lifetime_ * szCoeff,
+                          255 * (*itp).lifetime_ * szCoeff) );
+//           (*itp).setColor( video::SColor( 255 * (1. - (*itp).lifetime_ * szCoeff),
+//                                           255 * (1. - (*itp).lifetime_ * szCoeff),
+//                                           255 * (1. - (*itp).lifetime_ * szCoeff),
+//                                           255 * (1. - (*itp).lifetime_ * szCoeff) ) );
         }
-      }
 
-      // Update lifetime and particle size
-      if ( (*itp).lifetime_-- % 10 == 0 ) {
-        float sz = sizeBase_ + sizeVar_ * (*itp).lifetime_ * szCoeff;
-        (*itp).setSize( sz );
-        if ( (*itp).type_ == SMOKE ) {
-          (*itp).setColor( video::SColor( 255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff),
-                                          255 * (1. - (*itp).lifetime_ * szCoeff) ) );
-        }
-
-      }
+//       }
     }
   }
 }
@@ -380,14 +433,21 @@ inline void ParticleSystem::emitParticles() {
   std::vector< Emitter >::iterator ite;
   for ( ite = emitters_.begin(); ite != emitters_.end(); ++ite ) {
     // Check if emitter is to create new particle, depending on emit threshold
-    if ( (*ite).fuel_ > std::rand() % (*ite).emitThreshold_ ) {
+//     int i = std::rand() % (*ite).fuel_;
+//     if ( i > (*ite).emitThreshold_ ) i = (*ite).emitThreshold_;
+    for ( int i = std::rand() % (*ite).emitThreshold_ ; i > 0; --i ) {
+      core::vector3df pos = (*ite).pos_ + core::vector3df( ( std::rand() * (*ite).size_.X ) / (float) RAND_MAX,
+                              ( std::rand() * (*ite).size_.Y ) / (float) RAND_MAX,
+                                ( std::rand() * (*ite).size_.Z ) / (float) RAND_MAX );
+//       std::cout << "Emit particle " << i << " at position <" << pos.X << "," << pos.Y << "," << pos.Z << ">" << std::endl;
       (*ite).particles_.push_back( Particle( smgr_,
                                    numParticles_++,
-                                   (*ite).pos_,
+                                   pos,
                                    textures_[ std::rand() % textures_.size() ],
                                    numSprites_,
                                    (*ite).temp_,
                                    bbColorTable_[ (int) (((*ite).temp_ - smokeTemp_) / 50.) ],
+                                   sizeBase_ + sizeVar_,
                                    (int) ((*ite).fuel_ * (*ite).lifetimeCoeff_ )) );
       // Reduce emitter's fuel
       (*ite).fuel_ *= (*ite).fuelConsumption_;

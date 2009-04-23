@@ -1075,7 +1075,7 @@ template<typename T>
 inline void LBM<T>::treatPressure() {
 
   // Iterate over all pressure boundary cells
-  for( int i = 0; i < pressureCells_.size(); ++i ) {
+  for( uint i = 0; i < pressureCells_.size(); ++i ) {
 
     // Fetch coordinates of current boundary cell
     int x = pressureCells_[i][0];
@@ -1130,7 +1130,7 @@ inline void LBM<T>::treatCurved() {
 template<typename T>
 inline void LBM<T>::moveSphere() {
 
-  for ( int i = 0; i < sphereObstacles_.size(); ++i ) {
+  for ( uint i = 0; i < sphereObstacles_.size(); ++i ) {
 
     T xCenter = sphereObstacles_[i].x;
     T yCenter = sphereObstacles_[i].y;
@@ -1139,9 +1139,9 @@ inline void LBM<T>::moveSphere() {
     T u_y = sphereObstacles_[i].u_y;
     T u_z = sphereObstacles_[i].u_z;
     T radius = sphereObstacles_[i].r;
-    std::cout << curStep_ << ": sphere " << i << " with center <" << xCenter;
-    std::cout << "," << yCenter << "," << zCenter << "> and radius " << radius;
-    std::cout << std::endl;
+//     std::cout << curStep_ << ": sphere " << i << " with center <" << xCenter;
+//     std::cout << "," << yCenter << "," << zCenter << "> and radius " << radius;
+//     std::cout << std::endl;
     T r2 = radius * radius;
     // Get bounding box of sphere
     T zStart = floor( zCenter - radius ) + .5;
@@ -1162,16 +1162,16 @@ inline void LBM<T>::moveSphere() {
     T xEnd   = floor( xCenter + radius ) + .5;
     if ( xEnd < 1.5 ) continue;
     if ( xEnd > flag_.getSizeX() - .5) xEnd = flag_.getSizeX() - .5;
-/*    std::cout << "Bounding box <" << xStart << "," << yStart << "," << zStart;
-    std::cout << "> to <" << xEnd << "," << yEnd << "," << zEnd << ">" << std::endl;*/
+//     std::cout << "Bounding box <" << xStart << "," << yStart << "," << zStart;
+//     std::cout << "> to <" << xEnd << "," << yEnd << "," << zEnd << ">" << std::endl;
 
     // Go over bounding box and check which cells are actually boundary cells
     for ( int z = zStart; z < zEnd; ++z )
       for ( int y = yStart; y < yEnd; ++y )
         for ( int x = xStart; x < xEnd; ++x ) {
           // Check if cell is potential boundary cell
-/*          std::cout << "Point <" << x + 0.5 << "," << y + 0.5 << "," << z + 0.5;
-          std::cout << ">, dist " << DIST(x + 0.5, y + 0.5, z + 0.5) << std::endl;*/
+//           std::cout << "Point <" << x + 0.5 << "," << y + 0.5 << "," << z + 0.5;
+//           std::cout << ">, dist " << DIST(x + 0.5, y + 0.5, z + 0.5) << std::endl;
           if ( DIST(x + 0.5, y + 0.5, z + 0.5) > r2 ) continue;
           // Go over all velocity directions
           for (int f = 1; f < Dim; ++f ) {
