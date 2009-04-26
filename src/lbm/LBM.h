@@ -25,6 +25,29 @@ using namespace confparser;
 
 namespace lbm {
 
+template<typename T>
+struct Sphere {
+
+  Sphere( T _x, T _y, T _z, T _r, T _u_x, T _u_y, T _u_z ) :
+      x(_x), y(_y), z(_z), r(_r), u_x(_u_x), u_y(_u_y), u_z(_u_z) {}
+
+  void move() {
+    x += u_x;
+    y += u_y;
+    z += u_z;
+  }
+
+  T x;
+  T y;
+  T z;
+  T r;
+  T u_x;
+  T u_y;
+  T u_z;
+};
+
+//! Enum describing possible states of a cell
+
 enum Flag {
   UNDEFINED = 0,
   FLUID     = 1,
@@ -285,6 +308,7 @@ protected:
 
   inline void collideStream( int x, int y, int z );
 
+#ifndef NSMAGO
   //! Perform a collide-stream step with turbulence correction
 
   //! \param[in] x Cell coordinate for dimension x
@@ -292,6 +316,7 @@ protected:
   //! \param[in] z Cell coordinate for dimension z
 
   inline void collideStreamSmagorinsky( int x, int y, int z );
+#endif
 
   //! Treat the no-slip boundary cells
 
@@ -316,6 +341,8 @@ protected:
   //! Treat the curved boundary cells
 
   inline void treatCurved();
+
+  inline void moveSphere();
 
   //! Write out the VTK file for a given timestep
 
@@ -378,6 +405,8 @@ protected:
 
   Grid<Flag,1> flag_;
 
+  std::vector< Sphere<T> > sphereObstacles_;
+
   //! List with coordinates of all noslip cells
 
   std::vector< Vec3<int> > noslipCells_;
@@ -404,11 +433,15 @@ protected:
 
   //! List with outflow directions for all outflow cells
 
-  std::vector< Vec3<int> > outflowDirs_;
+  std::vector< int > outflowDFs_;
 
   //! List with coordinates of all pressure cells
 
   std::vector< Vec3<int> > pressureCells_;
+
+  //! List with outflow directions for all pressure cells
+
+  std::vector< int > pressureDFs_;
 
   //! List with coordinates of all curved boundary cells
 

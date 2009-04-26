@@ -20,6 +20,29 @@ using namespace irr;
 
 namespace particles {
 
+struct Sphere {
+
+  Sphere( float x,
+          float y,
+          float z,
+          float radius,
+          float u_x = 0.0,
+          float u_y = 0.0,
+          float u_z = 0.0,
+          scene::IMeshSceneNode* n = 0 ) :
+      pos( x, y, z ), r( radius ), u( u_x, u_y, u_z ), node( n ) {}
+
+  void move() {
+    pos += u;
+    node->setPosition( pos );
+  }
+
+  core::vector3df pos;
+  float r;
+  core::vector3df u;
+  scene::IMeshSceneNode* node;
+};
+
 //! Particle system that handles creation, movement and visualization of
 //! particles.
 
@@ -87,6 +110,11 @@ protected:
   //! \param[in] maxTemp Maximum emitted particle temperature
 
   void generateBlackBodyColorTable( float maxTemp );
+
+  float getTime( timeval &start, timeval &end ) {
+    return (float) ( end.tv_sec - start.tv_sec )
+            + (float) ( end.tv_usec - start.tv_usec ) / 1000000.;
+  }
 
   // ============ //
   // Data members //
@@ -161,8 +189,13 @@ protected:
   //! Vector of axis-aligned cuboid obstacles
   std::vector< core::aabbox3df > obstacles_;
 
+  std::vector< Sphere > spheres_;
+
   //! Base file name for povray output files
   std::string povFileName_;
+
+  std::string updFileName_;
+  std::string irrFileName_;
 };
 
 } // namespace particles

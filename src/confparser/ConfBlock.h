@@ -149,11 +149,15 @@ public:
   //! \return Parameter specified by \em key as type \em T
 
   template < typename T >
-  T getParam( std::string key ) throw ( ParameterNotFound ) {
+  T getParam( std::string key ) throw ( std::invalid_argument ) {
     std::map< std::string, std::string >::iterator it = props_.find( key );
     if ( it == props_.end() )
-      throw ParameterNotFound( key.c_str() );
-    return boost::lexical_cast<T>( it->second );
+      throw ParameterNotFound( key );
+    try {
+      return boost::lexical_cast<T>( it->second );
+    } catch( boost::bad_lexical_cast& e ) {
+      throw std::invalid_argument( "Bad value given for key '" + key + "': could not convert" );
+    }
   }
 
   //! Retrieve parameter as certain type
@@ -165,10 +169,14 @@ public:
   //! \note Will not throw an exception, instead return value must be checked
 
   template < typename T >
-  bool getParam( std::string key, T& value ) {
+  bool getParam( std::string key, T& value ) throw ( std::invalid_argument ) {
     propIter it = props_.find( key );
     if ( it == props_.end() ) return false;
-    value = boost::lexical_cast<T>( it->second );
+    try {
+      value = boost::lexical_cast<T>( it->second );
+    } catch( boost::bad_lexical_cast& e ) {
+      throw std::invalid_argument( "Bad value given for key '" + key + "': could not convert" );
+    }
     return true;
   }
 
