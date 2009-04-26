@@ -45,7 +45,7 @@ public:
 
   Particle () {}
 
-  //! Constructor
+  //! Constructor for particles with sprites
 
   //! \param[in] mgr        Pointer to irrlicht scene manager
   //! \param[in] id         Particle ID
@@ -59,12 +59,25 @@ public:
   Particle ( scene::ISceneManager* mgr,
              s32 id,
              const core::vector3df &position,
-             video::ITexture* texture,
+             std::vector< video::ITexture* >& textures,
              int numSprites,
              float temp,
              video::SColor& color,
              float size,
              int lifetime );
+
+  //! Constructor for particles without sprites
+
+  //! \param[in] position   Initial particle position
+  //! \param[in] temp       Initial particle temperature
+  //! \param[in] lifetime   Particle lifetime (in timesteps)
+
+  Particle ( const core::vector3df &position,
+             float temp,
+             int lifetime ) : pos_( position ),
+                              type_( FIRE ),
+                              temp_( temp ),
+                              lifetime_( lifetime ) {}
 
   //! Destructor
 
@@ -130,6 +143,12 @@ public:
   void setSize( float sz ) {
     for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setSize( core::dimension2df( sz, sz ) );
+    }
+  }
+
+  void setTexture( std::vector< video::ITexture* >& textures ) {
+    for ( uint i = 0; i < sprites_.size(); ++i ) {
+      sprites_[i]->setMaterialTexture( 0, textures[ rand() % textures.size() ] );
     }
   }
 

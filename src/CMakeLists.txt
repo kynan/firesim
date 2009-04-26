@@ -16,6 +16,7 @@ MACRO(ADD_FILE_DEPENDANCY file)
 ENDMACRO(ADD_FILE_DEPENDANCY)
 
 ADD_EXECUTABLE( lbm_reference main_lbm_reference.cpp )
+SET_TARGET_PROPERTIES( lbm_reference PROPERTIES COMPILE_FLAGS "-DLBM_ONLY" )
 TARGET_LINK_LIBRARIES( lbm_reference confparser )
 ADD_EXECUTABLE( firesim main_particle_system.cpp
                         particles/ParticleSystem.cpp

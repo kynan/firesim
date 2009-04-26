@@ -116,7 +116,7 @@ double LBM<T>::runStep() {
     } // y
   } // z
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&end, NULL);
   T scTime = getTime(start, end);
 #endif
@@ -124,7 +124,7 @@ double LBM<T>::runStep() {
   // Treat no-slip boundary conditions (walls)
   treatNoslip();
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&start, NULL);
   T nTime = getTime(end, start);
 #endif
@@ -132,7 +132,7 @@ double LBM<T>::runStep() {
   // Treat velocity cells
   treatVelocity();
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&end, NULL);
   T vTime = getTime(start, end);
 #endif
@@ -140,7 +140,7 @@ double LBM<T>::runStep() {
   // Treat inflow boundary conditions
   treatInflow();
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&start, NULL);
   T iTime = getTime(end, start);
 #endif
@@ -148,7 +148,7 @@ double LBM<T>::runStep() {
   // Treat outflow boundary conditions
   treatOutflow();
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&end, NULL);
   T oTime = getTime(start, end);
 #endif
@@ -156,7 +156,7 @@ double LBM<T>::runStep() {
   // Treat pressure cells
   treatPressure();
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   gettimeofday(&start, NULL);
   T pTime = getTime(end, start);
 #endif
@@ -173,14 +173,14 @@ double LBM<T>::runStep() {
   grid0_ = grid1_;
   grid1_ = gridTmp;
 
-#ifdef DEBUG
+#ifdef LBM_ONLY
   T cTime = getTime(start, end);
   stepTime = scTime + nTime + vTime + iTime + oTime + pTime + cTime;
 
-  std::cout << "Time step " << curStep_ << " of " << maxSteps_ << " took ";
-  std::cout << scTime << " + " << nTime << " + " << vTime << " + " << iTime;
-  std::cout << " + " << oTime << " + " << pTime << " + " << cTime << " = ";
-  std::cout << stepTime << "secs -> " << numCells / (stepTime * 1000000);
+  std::cout << curStep_ << " / " << maxSteps_ << ": " << scTime << " + ";
+  std::cout << nTime << " + " << vTime << " + " << iTime << " + " << oTime;
+  std::cout << " + " << pTime << " + " << cTime << " = ";
+  std::cout << stepTime << "s -> " << numCells / (stepTime * 1000000);
   std::cout << " MLUP/s" << std::endl;
 #else
   stepTime = getTime(start, end);
@@ -1146,22 +1146,22 @@ inline void LBM<T>::moveSphere() {
     // Get bounding box of sphere
     T zStart = floor( zCenter - radius ) + .5;
     if ( zStart > flag_.getSizeZ() - .5) continue;
-    if ( zStart < 1.5 ) zStart = 1.5;
+    if ( zStart < 2.5 ) zStart = 2.5;
     T zEnd   = floor( zCenter + radius ) + .5;
-    if ( zEnd < 1.5 ) continue;
-    if ( zEnd > flag_.getSizeZ() - .5) zEnd = flag_.getSizeZ() - .5;
+    if ( zEnd < 2.5 ) continue;
+    if ( zEnd > flag_.getSizeZ() - 1.5) zEnd = flag_.getSizeZ() - 1.5;
     T yStart = floor( yCenter - radius ) + .5;
-    if ( yStart > flag_.getSizeY() - .5) continue;
-    if ( yStart < 1.5 ) yStart = 1.5;
+    if ( yStart > flag_.getSizeY() - 1.5) continue;
+    if ( yStart < 2.5 ) yStart = 2.5;
     T yEnd   = floor( yCenter + radius ) + .5;
-    if ( yEnd < 1.5 ) continue;
-    if ( yEnd > flag_.getSizeY() - .5) yEnd = flag_.getSizeY() - .5;
+    if ( yEnd < 2.5 ) continue;
+    if ( yEnd > flag_.getSizeY() - 1.5) yEnd = flag_.getSizeY() - 1.5;
     T xStart = floor( xCenter - radius ) + .5;
-    if ( xStart > flag_.getSizeX() - .5) continue;
-    if ( xStart < 1.5 ) xStart = 1.5;
+    if ( xStart > flag_.getSizeX() - 1.5) continue;
+    if ( xStart < 2.5 ) xStart = 2.5;
     T xEnd   = floor( xCenter + radius ) + .5;
-    if ( xEnd < 1.5 ) continue;
-    if ( xEnd > flag_.getSizeX() - .5) xEnd = flag_.getSizeX() - .5;
+    if ( xEnd < 2.5 ) continue;
+    if ( xEnd > flag_.getSizeX() - 1.5) xEnd = flag_.getSizeX() - 1.5;
 //     std::cout << "Bounding box <" << xStart << "," << yStart << "," << zStart;
 //     std::cout << "> to <" << xEnd << "," << yEnd << "," << zEnd << ">" << std::endl;
 
@@ -1204,8 +1204,8 @@ inline void LBM<T>::moveSphere() {
               (*grid1_)( x + ex[f], y + ey[f], z + ez[f], f ) = ( 1. / ( 1. + delta) ) * (
                 delta * (   (*grid1_)( x + 2 * ex[f], y + 2 * ey[f], z + 2 * ez[f], f )
                     + (*grid1_)( x, y, z, finv[f] ) )
-                    + (1. - delta) * (*grid1_)( x + ex[f], y + ey[f], z + ez[f], finv[f] ) );
-//                     + w[f] * rho * ( u_x * ex[f] + u_y * ey[f] + u_z * ez[f]) );
+                    + (1. - delta) * (*grid1_)( x + ex[f], y + ey[f], z + ez[f], finv[f] )
+                    + w[f] * rho * ( u_x * ex[f] + u_y * ey[f] + u_z * ez[f]) );
             }
           }
         }

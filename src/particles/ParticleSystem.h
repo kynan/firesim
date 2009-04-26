@@ -111,6 +111,11 @@ protected:
 
   void generateBlackBodyColorTable( float maxTemp );
 
+  float getTime( timeval &start, timeval &end ) {
+    return (float) ( end.tv_sec - start.tv_sec )
+            + (float) ( end.tv_usec - start.tv_usec ) / 1000000.;
+  }
+
   // ============ //
   // Data members //
   // ============ //
@@ -188,6 +193,9 @@ protected:
 
   //! Base file name for povray output files
   std::string povFileName_;
+
+  std::string updFileName_;
+  std::string irrFileName_;
 };
 
 } // namespace particles
