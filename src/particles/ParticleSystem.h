@@ -34,7 +34,14 @@ struct Sphere {
 
   void move() {
     pos += u;
-    node->setPosition( pos );
+    if ( node )
+      node->setPosition( pos );
+  }
+
+  bool isPointInside( const core::vector3df& p ) {
+    return   (p.X - pos.X) * (p.X - pos.X)
+           + (p.Y - pos.Y) * (p.Y - pos.Y)
+           + (p.Z - pos.Z) * (p.Z - pos.Z) < r * r;
   }
 
   core::vector3df pos;
@@ -196,6 +203,8 @@ protected:
 
   std::string updFileName_;
   std::string irrFileName_;
+
+  bool dynamicLights_;
 };
 
 } // namespace particles

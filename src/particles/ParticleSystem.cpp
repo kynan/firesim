@@ -125,12 +125,14 @@ void ParticleSystem::setup( ConfBlock& base ) {
       std::cout << "lifetimeCoeff : " << lifetimeCoeff << std::endl;
 
       emitters_.push_back( Emitter( core::vector3df( xStart, yStart, zStart ),
-                           core::vector3df( xEnd - xStart, yEnd - yStart, zEnd - zStart ),
-                                            temp,
-                                            fuel,
-                                            emitThreshold,
-                                            fuelConsumption,
-                                            lifetimeCoeff ) );
+                                    core::vector3df( xEnd - xStart,
+                                                     yEnd - yStart,
+                                                     zEnd - zStart ),
+                                    temp,
+                                    fuel,
+                                    emitThreshold,
+                                    fuelConsumption,
+                                    lifetimeCoeff ) );
 
     }
 
@@ -157,6 +159,7 @@ void ParticleSystem::setup( ConfBlock& base ) {
       numSprites_ = paramBlock->getParam<int>( "numSprites" );
       int xRes = paramBlock->getParam<int>( "xRes" );
       int yRes = paramBlock->getParam<int>( "yRes" );
+      dynamicLights_ = paramBlock->getParam<bool>( "dynamicLights" );
       std::string camera = paramBlock->getParam<std::string>( "camera" );
       // Optionally write particle update times to file
       paramBlock->getParam<std::string>( "irrlichtTimeChart", irrFileName_ );
@@ -207,12 +210,19 @@ void ParticleSystem::setup( ConfBlock& base ) {
         ConfBlock b = it->second;
 
         std::string name = b.getParam<std::string>( "name" );
-        std::string texture = b.getParam<std::string>( "texture" );
+        std::string texture;
+        b.getParam<std::string>( "texture", texture );
+        bool lighting = dynamicLights_;
+        b.getParam<bool>( "lighting", lighting );
         float sizeTile = b.getParam<float>( "sizeTile" );
         int numTile = b.getParam<int>( "numTile" );
         float xCenter = b.getParam<float>( "xCenter" );
         float yCenter = b.getParam<float>( "yCenter" );
         float zCenter = b.getParam<float>( "zCenter" );
+        float xRot = 0., yRot = 0., zRot = 0.;
+        b.getParam<float>( "xRot", xRot );
+        b.getParam<float>( "yRot", yRot );
+        b.getParam<float>( "zRot", zRot );
 
         // Create a terrain scenenode
         scene::IAnimatedMesh *terrain_model =
@@ -225,12 +235,16 @@ void ParticleSystem::setup( ConfBlock& base ) {
                                    core::dimension2d<f32>(numTile, numTile)); // textureRepeatCount
 
         scene::IAnimatedMeshSceneNode* terrain_node =
-          smgr_->addAnimatedMeshSceneNode(terrain_model);
-        terrain_node->setMaterialTexture(0, drvr_->getTexture( texture.c_str() ));
-        terrain_node->setMaterialFlag(video::EMF_LIGHTING, false);
+          smgr_->addAnimatedMeshSceneNode( terrain_model,
+                                           0,
+                                           -1,
+                                           core::vector3df(xCenter,yCenter,zCenter),
+                                           core::vector3df(xRot,yRot,zRot));
+        if ( texture.length() ) terrain_node->setMaterialTexture(0, drvr_->getTexture( texture.c_str() ));
+        terrain_node->setMaterialFlag(video::EMF_LIGHTING, lighting);
 
         // Insert it into the scene
-        terrain_node->setPosition(core::vector3df(xCenter,yCenter,zCenter));
+//        terrain_node->setPosition(core::vector3df(xCenter,yCenter,zCenter));
       }
 
       cip = paramBlock->findAll( "mesh" );
@@ -240,8 +254,11 @@ void ParticleSystem::setup( ConfBlock& base ) {
         ConfBlock b = it->second;
 
         std::string file = b.getParam<std::string>( "file" );
-        std::string texture0 = b.getParam<std::string>( "texture0" );
-        std::string texture1 = b.getParam<std::string>( "texture1" );
+        std::string texture0, texture1;
+        b.getParam<std::string>( "texture0", texture0 );
+        b.getParam<std::string>( "texture1", texture1 );
+        bool lighting = dynamicLights_;
+        b.getParam<bool>( "lighting", lighting );
         float xCenter = b.getParam<float>( "xCenter" );
         float yCenter = b.getParam<float>( "yCenter" );
         float zCenter = b.getParam<float>( "zCenter" );
@@ -253,9 +270,9 @@ void ParticleSystem::setup( ConfBlock& base ) {
           scene::ISceneNode* node = smgr_->addMeshSceneNode(mesh->getMesh(0));
           if (node) {
             node->setPosition(core::vector3df(xCenter,yCenter,zCenter));
-            node->setMaterialTexture(0, drvr_->getTexture( texture0.c_str() ));
-            node->setMaterialTexture(1, drvr_->getTexture( texture1.c_str() ));
-            node->setMaterialFlag(video::EMF_LIGHTING, false);
+            if ( texture0.length() ) node->setMaterialTexture(0, drvr_->getTexture( texture0.c_str() ));
+            if ( texture1.length() ) node->setMaterialTexture(1, drvr_->getTexture( texture1.c_str() ));
+            node->setMaterialFlag(video::EMF_LIGHTING, lighting);
             node->setScale( core::vector3df( scale, scale, scale ) );
           }
         }
@@ -296,16 +313,21 @@ void ParticleSystem::setup( ConfBlock& base ) {
         std::cout << "," << zEnd << ">" << std::endl;
 
         if ( visible && device_ ) {
-          std::string texture = b.getParam<std::string>( "texture" );
+          std::string texture;
+          b.getParam<std::string>( "texture", texture );
+          bool lighting = dynamicLights_;
+          b.getParam<bool>( "lighting", lighting );
           scene::IMeshSceneNode* mesh = smgr_->addCubeSceneNode ( 1.0f, // size
                                     0, // parent
                                     -1, // id
-                                    core::vector3df( xStart + 0.5 * dx, yStart + 0.5 * dy, zStart + 0.5 * dz ), // position
+                                    core::vector3df( xStart + 0.5 * dx,
+                                                     yStart + 0.5 * dy,
+                                                     zStart + 0.5 * dz ), // position
                                     core::vector3df( 0, 0, 0 ), // rotation
                                     core::vector3df( dx, dy, dz ) // scale
                                   );
-          mesh->setMaterialFlag( video::EMF_LIGHTING, false );
-          mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
+          mesh->setMaterialFlag( video::EMF_LIGHTING, lighting );
+          if ( texture.length() ) mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
         }
         obstacles_.push_back(
             core::aabbox3df( xStart, yStart, zStart, xEnd, yEnd, zEnd ) );
@@ -328,14 +350,17 @@ void ParticleSystem::setup( ConfBlock& base ) {
 
         // Add scene nodes for moving sphere
         if ( visible && device_ ) {
-          std::string texture = bl.getParam<std::string>( "texture" );
+          std::string texture;
+          bl.getParam<std::string>( "texture", texture );
+          bool lighting = dynamicLights_;
+          bl.getParam<bool>( "lighting", lighting );
           scene::IMeshSceneNode* mesh = smgr_->addSphereSceneNode( radius,
               128,
               0,
               -1,
               core::vector3df( xCenter, yCenter, zCenter ) );
-          mesh->setMaterialFlag( video::EMF_LIGHTING, false );
-          mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
+          mesh->setMaterialFlag( video::EMF_LIGHTING, lighting );
+          if ( texture.length() ) mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
           spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, 0.0, 0.0, 0.0, mesh ) );
         } else {
           spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius ) );
@@ -363,14 +388,17 @@ void ParticleSystem::setup( ConfBlock& base ) {
 
         // Add scene nodes for moving sphere
         if ( visible && device_ ) {
-          std::string texture = bl.getParam<std::string>( "texture" );
+          std::string texture;
+          bl.getParam<std::string>( "texture", texture );
+          bool lighting = dynamicLights_;
+          bl.getParam<bool>( "lighting", lighting );
           scene::IMeshSceneNode* mesh = smgr_->addSphereSceneNode( radius,
               128,
               0,
               -1,
               core::vector3df( xCenter, yCenter, zCenter ) );
-          mesh->setMaterialFlag( video::EMF_LIGHTING, false );
-          mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
+          mesh->setMaterialFlag( video::EMF_LIGHTING, lighting );
+          if ( texture.length() ) mesh->setMaterialTexture( 0, drvr_->getTexture( texture.c_str() ) );
           spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z, mesh ) );
         } else {
           spheres_.push_back( Sphere( xCenter, yCenter, zCenter, radius, u_x, u_y, u_z ) );
@@ -568,6 +596,12 @@ inline void ParticleSystem::updateParticles() {
           inObstacle = true;
           break;
         }
+      for ( uint i = 0; i < spheres_.size(); ++i )
+        if( spheres_[i].isPointInside( u ) ) {
+//          std::cout << "Point <" << u.X << "," << u.Y << "," << u.Z << "> inside obstacle " << i << std::endl;
+          inObstacle = true;
+          break;
+        }
       // If not, apply it
       if ( !inObstacle ) (*itp).updatePos( v + g );
       else (*itp).updatePos( v );
@@ -607,6 +641,11 @@ inline void ParticleSystem::updateParticles() {
                                         255 * (*itp).lifetime_ * szCoeff,
                                         255 * (*itp).lifetime_ * szCoeff) );
       }
+//      array<scene::ISceneNode*> lightarray;
+//      smgr_->getSceneNodesFromType(scene::ESNT_LIGHT, lightarray);
+//      for (u32 i = 0; i  < lightarray.size(); i++) {
+//        lightarray[i]->remove();
+//      }
       (*itp).lifetime_--;
     }
   }
@@ -635,7 +674,8 @@ inline void ParticleSystem::emitParticles() {
                       (*ite).temp_,
                       bbColorTable_[ (int) (((*ite).temp_ - smokeTemp_) / 50.) ],
                       sizeBase_ + sizeVar_,
-                      (int) ((*ite).fuel_ * (*ite).lifetimeCoeff_ )
+                      (int) ((*ite).fuel_ * (*ite).lifetimeCoeff_ ),
+                      dynamicLights_
                     )              );
       else
         (*ite).particles_.push_back(

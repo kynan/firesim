@@ -55,6 +55,7 @@ public:
   //! \param[in] temp       Initial particle temperature
   //! \param[in] color      Initial particle color
   //! \param[in] lifetime   Particle lifetime (in timesteps)
+  //! \param[in] dynamicLights Turn dynamic lighting on / off
 
   Particle ( scene::ISceneManager* mgr,
              s32 id,
@@ -64,7 +65,8 @@ public:
              float temp,
              video::SColor& color,
              float size,
-             int lifetime );
+             int lifetime,
+             bool dynamicLights = false );
 
   //! Constructor for particles without sprites
 
@@ -133,6 +135,7 @@ public:
   void setColor( const video::SColor& c ) {
     for ( uint i = 0; i < sprites_.size(); ++i ) {
       sprites_[i]->setColor( c );
+//      (*( sprites_[i]->getChildren().begin() ))->setRadius( temp_ );
     }
   }
 
@@ -161,6 +164,8 @@ public:
                                             255 * lifetime_ * colorCoeff,
                                             255 * lifetime_ * colorCoeff,
                                             255 * lifetime_ * colorCoeff ) );
+      // Remove light source attached to the billboard
+      sprites_[i]->removeAll();
     }
   }
 
