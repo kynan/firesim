@@ -420,11 +420,16 @@ void ParticleSystem::run() {
   // Main loop with real-time visualization enabled
   if ( device_ ) {
 
-    float totTime = 0.;
-    std::ofstream updFile;
-    std::ofstream irrFile;
-    if ( updFileName_.length() ) updFile.open( updFileName_.c_str(), std::ios::out );
-    if ( irrFileName_.length() ) irrFile.open( irrFileName_.c_str(), std::ios::out );
+    float totTime = 0., eTimeTot = 0., iTimeTot = 0., sTimeTot = 0., uTimeTot = 0.;
+    std::ofstream updFile, irrFile;
+    if ( updFileName_.length() ) {
+      updFile.open( updFileName_.c_str(), std::ios::out );
+      updFile << "\"Number of Particles\" \"Step time\" \"Emission time\" \"LBM step time\" \"Update time\"\n";
+    }
+    if ( irrFileName_.length() ) {
+      irrFile.open( irrFileName_.c_str(), std::ios::out );
+      irrFile << "\"Number of Particles\" \"Sprites per particle\" \"Step time\" \"Emission time\" \"Rendering time\" \"LBM step time\" \"Update time\" \"FPS\"\n";
+    }
 
     // Start the simulation loop
     while ( device_->run() ) {
@@ -479,6 +484,11 @@ void ParticleSystem::run() {
       float uTime = getTime( start, end );
 
       stepTime = eTime + iTime + sTime + uTime;
+      totTime += stepTime;
+      eTimeTot += eTime;
+      iTimeTot += iTime;
+      sTimeTot += sTime;
+      uTimeTot += uTime;
 
       std::cout << step << " / " << maxSteps_ << ": ";
       std::cout << eTime << " + " << iTime << " + " << sTime << " + " << uTime;
@@ -486,20 +496,25 @@ void ParticleSystem::run() {
       std::cout << std::endl;
 
       if ( updFileName_.length() )
-        updFile << numParticles_ << " " << uTime << std::endl;
+        updFile << numParticles_ << " " << stepTime << " " << eTime << " " << sTime << " " << uTime << "\n";
       if ( irrFileName_.length() )
-        irrFile << numParticles_ * numSprites_ << " " << iTime << std::endl;
+        irrFile << numParticles_ << " " << numSprites_ << " " << stepTime << " " << eTime << " " << iTime << " " << sTime << " " << uTime << " " << drvr_->getFPS() << "\n";
 
       // Check for end of simulation
       if ( ++step >= maxSteps_ ) break;
     }
 
+    if ( updFileName_.length() ) updFile.close();
+    if ( irrFileName_.length() ) irrFile.close();
+
   } else {
 
     float totTime = 0.;
     std::ofstream updFile;
-    if ( updFileName_.length() ) updFile.open( updFileName_.c_str(), std::ios::out );
-
+    if ( updFileName_.length() ) {
+      updFile.open( updFileName_.c_str(), std::ios::out );
+      updFile << "\"Number of Particles\" \"Step time\" \"Emission time\" \"LBM step time\" \"Update time\"\n";
+    }
     // Start the simulation loop
     for ( int step = 20; step < maxSteps_; ++step ) {
 
@@ -532,9 +547,11 @@ void ParticleSystem::run() {
       std::cout << stepTime << "secs with " << numParticles_ << " particles";
       std::cout << std::endl;
 
-      if ( updFileName_.length() ) updFile << numParticles_ << " " << uTime << std::endl;
+      if ( updFileName_.length() )
+        updFile << numParticles_ << " " << stepTime << " " << eTime << " " << sTime << " " << uTime << "\n";
     }
 
+    if ( updFileName_.length() ) updFile.close();
   }
 }
 
