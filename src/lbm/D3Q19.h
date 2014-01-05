@@ -163,28 +163,46 @@ const int ep[6][19] = {
 
 //! Normalized lattice velocities in x-direction
 
-//                     C        , N        , E        , S        ,  W,  T,  B,
-const Real exn[19] = { 0        , 0        , 1        , 0        , -1,  0,  0,
-//                     NE       , SE       , SW       , NW       ,
-                       1/sqrt(2), 1/sqrt(2),-1/sqrt(2),-1/sqrt(2),
-//                     TN       , TE       , TS       , TW       ,
-                       0        , 1/sqrt(2), 0        ,-1/sqrt(2),
-//                     BN       , BE       , BS       , BW
-                       0        , 1/sqrt(2), 0        ,-1/sqrt(2) };
+//                         C        , N        , E        , S        ,  W,  T,  B,
+const RealType exn[19] = { 0        , 0        , 1        , 0        , -1,  0,  0,
+//                         NE       , SE       , SW       , NW       ,
+                           1/sqrt(2), 1/sqrt(2),-1/sqrt(2),-1/sqrt(2),
+//                         TN       , TE       , TS       , TW       ,
+                           0        , 1/sqrt(2), 0        ,-1/sqrt(2),
+//                         BN       , BE       , BS       , BW
+                           0        , 1/sqrt(2), 0        ,-1/sqrt(2) };
 
 //! Normalized lattice velocities in y-direction
 
-//                     C, N, E, S, W, T, B, NE       , SE       , SW       , NW       , TN       , TE       , TS       , TW       , BN       , BE       , BS       , BW
-const Real eyn[19] = { 0, 1, 0,-1, 0, 0, 0, 1/sqrt(2),-1/sqrt(2),-1/sqrt(2), 1/sqrt(2), 1/sqrt(2), 0        ,-1/sqrt(2), 0        , 1/sqrt(2), 0        ,-1/sqrt(2), 0 };
+//                         C        , N        , E        , S        , W, T, B,
+const RealType eyn[19] = { 0        , 1        , 0        ,-1        , 0, 0, 0,
+//                         NE       , SE       , SW       , NW       ,
+                           1/sqrt(2),-1/sqrt(2),-1/sqrt(2), 1/sqrt(2),
+//                         TN       , TE       , TS       , TW       ,
+                           1/sqrt(2), 0        ,-1/sqrt(2), 0        ,
+//                         BN       , BE       , BS       , BW
+                           1/sqrt(2), 0        ,-1/sqrt(2), 0 };
 
 //! Normalized lattice velocities in z-direction
 
-//                     C, N, E, S, W, T, B, NE       , SE       , SW       , NW       , TN       , TE       , TS       , TW       , BN       , BE       , BS       , BW
-const Real ezn[19] = { 0, 0, 0, 0, 0, 1,-1, 0        , 0        , 0        , 0        , 1/sqrt(2), 1/sqrt(2), 1/sqrt(2), 1/sqrt(2),-1/sqrt(2),-1/sqrt(2),-1/sqrt(2),-1/sqrt(2) };
+//                         C        , N        , E        , S        , W, T, B,
+const RealType ezn[19] = { 0        , 0        , 0        , 0        , 0, 1,-1,
+//                         NE       , SE       , SW       , NW       ,
+                           0        , 0        , 0        , 0        ,
+//                         TN       , TE       , TS       , TW       ,
+                           1/sqrt(2), 1/sqrt(2), 1/sqrt(2), 1/sqrt(2),
+//                         BN       , BE       , BS       , BW
+                          -1/sqrt(2),-1/sqrt(2),-1/sqrt(2),-1/sqrt(2) };
 
 //! Lengths of the lattice links
-//                     C, N, E, S, W, T, B, NE    , SE    , SW    , NW    , TN    , TE    , TS    , TW    , BN    , BE    , BS    , BW
-const Real le[19] = { 1.,1.,1.,1.,1.,1.,1.,sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2),sqrt(2) };
+//                        C      , N      , E      , S      , W , T , B ,
+const RealType le[19] = { 1.     , 1.     , 1.     , 1.     , 1., 1., 1.,
+//                        NE     , SE     , SW     , NW     ,
+                          sqrt(2), sqrt(2), sqrt(2), sqrt(2),
+//                        TN     , TE     , TS     , TW     ,
+                          sqrt(2), sqrt(2), sqrt(2), sqrt(2),
+//                        BN     , BE     , BS     , BW     ,
+                          sqrt(2), sqrt(2), sqrt(2), sqrt(2) };
 
 } // namespace lbm
 

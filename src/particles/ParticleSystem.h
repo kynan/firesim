@@ -5,8 +5,8 @@
 #ifndef PARTICLESYSTEM_H_
 #define PARTICLESYSTEM_H_
 
-#ifndef Real
-#define Real float
+#ifndef RealType
+#define RealType float
 #endif
 
 #include <irrlicht/irrlicht.h>

@@ -2,8 +2,8 @@
 //! \date   Mar 24, 2009
 //! \author Florian Rathgeber
 
-#ifndef Real
-#define Real float
+#ifndef RealType
+#define RealType float
 #endif
 
 #include <iostream>
@@ -26,7 +26,7 @@ int main ( int argc, char** argv ) {
     exit( -1 );
   }
 
-  lbm::LBM<Real> myLBM( argv[1] );
+  lbm::LBM<RealType> myLBM( argv[1] );
   myLBM.run();
 
   return 0;
