@@ -46,6 +46,21 @@ struct Sphere {
   T u_z;
 };
 
+template<typename T>
+struct PerformanceData {
+  PerformanceData() : scTime( 0. ), nTime( 0. ), vTime( 0. ), iTime( 0. ), oTime( 0. ), pTime( 0. ), cTime( 0. ), sTime( 0. ), mTime( 0. ) {}
+  std::string fileName;
+  T scTime;
+  T nTime;
+  T vTime;
+  T iTime;
+  T oTime;
+  T pTime;
+  T cTime;
+  T sTime;
+  T mTime;
+};
+
 //! Enum describing possible states of a cell
 
 enum Flag {
@@ -352,6 +367,10 @@ protected:
 
   void writeVtkFile();
 
+  void writePerformanceSummary();
+
+  std::string calcMLUP( T time, int cells );
+
   // ============ //
   // Data members //
   // ============ //
@@ -455,6 +474,8 @@ protected:
   //! List with fluid fractions for all lattice links of curved boundary cells
 
   std::vector< std::vector<T> > curvedDeltas_;
+
+  PerformanceData<T> prof_;
 
 };
 

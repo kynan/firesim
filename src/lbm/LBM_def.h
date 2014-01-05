@@ -20,6 +20,8 @@
 
 #endif
 
+#include <iomanip>
+
 namespace lbm {
 
 // ============================ //
@@ -34,7 +36,7 @@ LBM<T>::LBM( const std::string configFileName ) : curStep_( 0 ) {
     ConfBlock base = p.parse( configFileName );
     std::cout << "Parsed configuration file " << configFileName << std::endl;
     setup( base );
-  } catch ( std::exception e ) {
+  } catch ( std::exception& e ) {
     std::cerr << e.what() << std::endl;
     exit( -1 );
   }
@@ -81,6 +83,8 @@ void LBM<T>::run() {
   std::cout << "Average speed of " << (maxSteps_ * numCells) / (totTime
       * 1000000);
   std::cout << " MLUP/s" << std::endl;
+
+  if ( prof_.fileName.length() ) writePerformanceSummary();
 }
 
 template<typename T>
@@ -179,18 +183,32 @@ double LBM<T>::runStep() {
 
   moveSphere();
 
+  gettimeofday(&end, NULL);
+
   // exchange grids for current and previous time step
   Grid<T, Dim> *gridTmp = grid0_;
   grid0_ = grid1_;
   grid1_ = gridTmp;
 
 #ifdef LBM_ONLY
-  T cTime = getTime(start, end);
-  stepTime = scTime + nTime + vTime + iTime + oTime + pTime + cTime;
+  T mTime = sphereObstacles_.size() ? getTime(start, end) : 0.;
+  stepTime = scTime + nTime + vTime + iTime + oTime + pTime + cTime + mTime;
+
+  if ( prof_.fileName.length() ) {
+    prof_.scTime += scTime;
+    prof_.nTime += nTime;
+    prof_.vTime += vTime;
+    prof_.iTime += iTime;
+    prof_.oTime += oTime;
+    prof_.pTime += pTime;
+    prof_.cTime += cTime;
+    prof_.sTime += sTime;
+    prof_.mTime += mTime;
+  }
 
   std::cout << curStep_ << " / " << maxSteps_ << ": " << scTime << " + ";
   std::cout << nTime << " + " << vTime << " + " << iTime << " + " << oTime;
-  std::cout << " + " << pTime << " + " << cTime << " = ";
+  std::cout << " + " << pTime << " + " << cTime << " + " << sTime << " + " << mTime << " = ";
   std::cout << stepTime << "s -> " << numCells / (stepTime * 1000000);
   std::cout << " MLUP/s" << std::endl;
 #else
@@ -296,6 +314,14 @@ void LBM<T>::setup( ConfBlock& base ) {
     } else {
       std::cout << "No vtk block given in configuration file, no output will be created." << std::endl;
       vtkStep_ = 0;
+    }
+
+    paramBlock = base.find( "profiling" );
+    if ( paramBlock != NULL ) {
+      prof_.fileName = paramBlock->getParam<std::string>( "fileName" );
+      std::cout << "Performance summary file name : " << prof_.fileName << std::endl;
+    } else {
+      std::cout << "No profiling block given in configuration file, no performance summary will be created." << std::endl;
     }
 
     std::cout << "Set up the lattices..." << std::endl;
@@ -671,7 +697,7 @@ void LBM<T>::setup( ConfBlock& base ) {
          for ( int i = 0; i < Dim; ++i )
            (*grid1_)( x, y, z, i ) = w[i];
 
-  } catch ( std::exception e ) {
+  } catch ( std::exception& e ) {
     std::cerr << e.what() << std::endl;
     exit( -1 );
   } catch ( const char* e ) {
@@ -1269,6 +1295,72 @@ inline void LBM<T>::moveSphere() {
 
     sphereObstacles_[i].move();
   }
+}
+
+template<typename T>
+void LBM<T>::writePerformanceSummary() {
+  assert( prof_.fileName.length() );
+#ifdef NSMAGO
+  std::cout << "Writing performance summary file '" << prof_.fileName << ".nosmago'" << std::endl;
+  std::ofstream f( (prof_.fileName + ".nosmago").c_str(), std::ios::out );
+#else
+  std::cout << "Writing performance summary file '" << prof_.fileName << ".smago'" << std::endl;
+  std::ofstream f( (prof_.fileName + ".smago").c_str(), std::ios::out );
+#endif
+
+  T boundTime = prof_.nTime + prof_.vTime + prof_.iTime + prof_.oTime + prof_.pTime + prof_.cTime + prof_.mTime;
+  T totTime = boundTime + prof_.scTime;
+
+  // Get effective domain size (without ghost layer)
+  int sizeX = grid0_->getSizeX() - 2;
+  int sizeY = grid0_->getSizeY() - 2;
+  int sizeZ = grid0_->getSizeZ() - 2;
+
+  int numCells = sizeX * sizeY * sizeZ;
+
+  int nCells = noslipCells_.size();
+  int vCells = velocityCells_.size();
+  int iCells = inflowCells_.size();
+  int oCells = outflowCells_.size();
+  int pCells = pressureCells_.size();
+  int cCells = curvedCells_.size();
+  int sCells = staircaseCells_.size();
+  int bCells = nCells + vCells + iCells + oCells + pCells + cCells + sCells;
+  int fCells = numCells - bCells;
+
+//   std::ostream &f = std::cout;
+  f << "Domain size           : " << sizeX << " x " << sizeY << " x " << sizeZ << "\n";
+//   f << "Number of Cells       : " << numCells << "\n";
+  f << "Number of timesteps   : " << maxSteps_ << "\n";
+#ifdef NSMAGO
+  f << "Smagorinsky turbulence: no\n";
+#else
+  f << "Smagorinsky turbulence: yes\n";
+#endif
+//   f << "Fluid cells: " << fCells << "\n";
+//   f << "No-slip boundary cells: " << nCells << "\n";
+//   f << "Acceleration boundary cells: " << vCells << "\n";
+//   f << "Inflow boundary cells: " << iCells << "\n";
+//   f << "Outflow boundary cells: " << oCells << "\n";
+//   f << "Pressure boundary cells: " << pCells << "\n";
+//   f << "Curved boundary cells: " << cCells << "\n";
+//   f.setf( std::ios_base::right );
+  f << "Cell type       |" << std::setw(13) << "Total" << std::setw(13) << "Fluid" << std::setw(13) << "Boundary Tot" << std::setw(13) << "No-slip" << std::setw(13) << "Acceleration" << std::setw(13) << "Inflow" << std::setw(13) << "Outflow" << std::setw(13) << "Pressure" << std::setw(13) << "Curved" << std::setw(13) << "Staircase" << std::setw(13) << "Moving\n";
+  f << "Number of cells |" << std::setw(13) << numCells << std::setw(13) << fCells << std::setw(13) << bCells << std::setw(13) << nCells << std::setw(13) << vCells << std::setw(13) << iCells << std::setw(13) << oCells << std::setw(13) << pCells << std::setw(13) << cCells << std::setw(13) << sCells << "\n";
+  f << "Runtime [s]     |" << std::setw(13) << totTime << std::setw(13) << prof_.scTime << std::setw(13) << boundTime << std::setw(13) << prof_.nTime << std::setw(13) << prof_.vTime << std::setw(13) << prof_.iTime << std::setw(13) << prof_.oTime << std::setw(13) << prof_.pTime << std::setw(13) << prof_.cTime << std::setw(13) << prof_.sTime << std::setw(13) << prof_.mTime << "\n";
+  f << "Runtime share   |" << std::setw(13) << 1 << std::setw(13) << prof_.scTime / totTime << std::setw(13) << boundTime / totTime << std::setw(13) << prof_.nTime / totTime << std::setw(13) << prof_.vTime / totTime << std::setw(13) <<  prof_.iTime / totTime << std::setw(13) << prof_.oTime / totTime << std::setw(13) << prof_.pTime / totTime << std::setw(13) << prof_.cTime / totTime << std::setw(13) << prof_.sTime / totTime << std::setw(13) << prof_.mTime / totTime << "\n";
+//   f << "Runtime share   |" << prof_.scTime / totTime << ( nCells ? prof_.nTime / totTime : "n/a" ) << ( vCells ? prof_.vTime / totTime : "n/a" ) << ( iCells ? prof_.iTime / totTime : "n/a" ) << ( oCells ? prof_.oTime / totTime : "n/a" ) << ( pCells ? prof_.pTime / totTime : "n/a" ) << ( cCells ? prof_.cTime / totTime : "n/a" ) << ( prof_.mTime > 0 ? prof_.mTime / totTime : "n/a" ) << "\n";
+  f << "MLUP/s          |" << std::setw(13) << calcMLUP( totTime, numCells ) << std::setw(13) << calcMLUP( prof_.scTime, fCells ) << std::setw(13) << calcMLUP( boundTime, bCells ) << std::setw(13) << calcMLUP( prof_.nTime, nCells ) << std::setw(13) << calcMLUP( prof_.vTime, vCells ) << std::setw(13) << calcMLUP( prof_.iTime, iCells ) << std::setw(13) << calcMLUP( prof_.oTime, oCells ) << std::setw(13) << calcMLUP( prof_.pTime, pCells ) << std::setw(13) << calcMLUP( prof_.cTime, cCells ) << std::setw(13) << calcMLUP( prof_.sTime, sCells ) << "\n";
+}
+
+template<typename T>
+std::string LBM<T>::calcMLUP( T time, int cells ) {
+  if ( cells == 0 ) {
+    return std::string("n/a");
+  }
+  std::stringstream o;
+  o << cells * maxSteps_ / ( time * 1000000 );
+  return o.str();
 }
 
 template<>
