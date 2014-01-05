@@ -478,11 +478,6 @@ void ParticleSystem::run() {
       gettimeofday(&end, NULL);
       float uTime = getTime( start, end );
 
-      // Move the spheres
-      for ( uint i = 0; i < spheres_.size(); ++i ) {
-        spheres_[i].move();
-      }
-
       stepTime = eTime + iTime + sTime + uTime;
 
       std::cout << step << " / " << maxSteps_ << ": ";
@@ -529,11 +524,6 @@ void ParticleSystem::run() {
 
       gettimeofday(&end, NULL);
       float uTime = getTime( start, end );
-
-      // Move the spheres
-      for ( uint i = 0; i < spheres_.size(); ++i ) {
-        spheres_[i].move();
-      }
 
       stepTime = eTime + sTime + uTime;
 
@@ -644,6 +634,12 @@ inline void ParticleSystem::updateParticles() {
       (*itp).lifetime_--;
     }
   }
+
+  // Move the spheres
+  for ( uint i = 0; i < spheres_.size(); ++i ) {
+    spheres_[i].move();
+  }
+
 }
 
 inline void ParticleSystem::emitParticles() {
