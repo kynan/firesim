@@ -322,6 +322,8 @@ protected:
 
   inline void treatNoslip();
 
+  inline void treatStaircase();
+
   //! Treat the boundary cells with fixed velocity
 
   inline void treatVelocity();
@@ -405,11 +407,14 @@ protected:
 
   Grid<Flag,1> flag_;
 
+  //! Vector holding all sphere obstacles
+
   std::vector< Sphere<T> > sphereObstacles_;
 
   //! List with coordinates of all noslip cells
 
   std::vector< Vec3<int> > noslipCells_;
+  std::vector< Vec3<int> > staircaseCells_;
 
   //! List with coordinates of all velocity cells
 

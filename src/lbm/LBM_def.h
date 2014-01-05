@@ -126,7 +126,7 @@ double LBM<T>::runStep() {
 
 #ifdef LBM_ONLY
   gettimeofday(&start, NULL);
-  T nTime = getTime(end, start);
+  T nTime = noslipCells_.size() ? getTime(end, start) : 0.;
 #endif
 
   // Treat velocity cells
@@ -134,7 +134,7 @@ double LBM<T>::runStep() {
 
 #ifdef LBM_ONLY
   gettimeofday(&end, NULL);
-  T vTime = getTime(start, end);
+  T vTime = velocityCells_.size() ? getTime(start, end) : 0.;
 #endif
 
   // Treat inflow boundary conditions
@@ -142,7 +142,7 @@ double LBM<T>::runStep() {
 
 #ifdef LBM_ONLY
   gettimeofday(&start, NULL);
-  T iTime = getTime(end, start);
+  T iTime = inflowCells_.size() ? getTime(end, start) : 0.;
 #endif
 
   // Treat outflow boundary conditions
@@ -150,7 +150,7 @@ double LBM<T>::runStep() {
 
 #ifdef LBM_ONLY
   gettimeofday(&end, NULL);
-  T oTime = getTime(start, end);
+  T oTime = outflowCells_.size() ? getTime(start, end) : 0.;
 #endif
 
   // Treat pressure cells
@@ -158,13 +158,24 @@ double LBM<T>::runStep() {
 
 #ifdef LBM_ONLY
   gettimeofday(&start, NULL);
-  T pTime = getTime(end, start);
+  T pTime = pressureCells_.size() ? getTime(end, start) : 0.;
 #endif
 
   // Treat curved boundary cells
   treatCurved();
 
+#ifdef LBM_ONLY
   gettimeofday(&end, NULL);
+  T cTime = curvedCells_.size() ? getTime(start, end) : 0.;
+#endif
+
+  // Treat staircase approximated curved boundary cells
+  treatStaircase();
+
+#ifdef LBM_ONLY
+  gettimeofday(&start, NULL);
+  T sTime = staircaseCells_.size() ? getTime(end, start) : 0.;
+#endif
 
   moveSphere();
 
@@ -576,8 +587,34 @@ void LBM<T>::setup( ConfBlock& base ) {
                    + (y - yCenter) * (y - yCenter)
                    + (z - zCenter) * (z - zCenter) < r2 ) {
                 flag_( (int) x, (int) y, (int) z ) = NOSLIP;
-                noslipCells_.push_back( Vec3<int>( (int) x, (int) y, (int) z ) );
+//                 noslipCells_.push_back( Vec3<int>( (int) x, (int) y, (int) z ) );
 //                 std::cout << "Setting cell <" << (int)x << "," << (int)y << "," << (int)z << "> NOSLIP" << std::endl;
+              }
+            }
+        // Go over bounding box again and check which cells are actually
+        // boundary cells
+        for ( int z = zStart; z < zEnd; ++z )
+          for ( int y = yStart; y < yEnd; ++y )
+            for ( int x = xStart; x < xEnd; ++x ) {
+              if ( flag_( x, y, z ) == NOSLIP ) {
+                // Go over all velocity directions
+                bool isBoundary = false;
+                std::vector<T> delta(19, -1.);
+                for (int f = 1; f < Dim; ++f ) {
+                  if ( flag_( x + ex[f], y + ey[f], z + ez[f] ) == UNDEFINED ) {
+                    isBoundary = true;
+                    break;
+                  }
+                }
+                if ( isBoundary ) {
+//                   std::cout << "Fluid fractions for lattice links of boundary cell <";
+//                   std::cout << x << "," << y << "," << z << ">:\n[ ";
+//                   for ( uint i = 0; i < delta.size(); ++i ) {
+//                     std::cout << delta[i] << " ";
+//                   }
+//                   std::cout << "]" << std::endl;
+                  staircaseCells_.push_back( Vec3<int>( x, y, z ) );
+                }
               }
             }
       }
@@ -972,6 +1009,26 @@ inline void LBM<T>::treatNoslip() {
     }
   }
 }
+
+template<typename T>
+inline void LBM<T>::treatStaircase() {
+
+  // Iterate over all no-slip boundary cells
+  std::vector< Vec3<int> >::iterator iter;
+  for( iter = staircaseCells_.begin(); iter != staircaseCells_.end(); iter++ ) {
+
+    // Fetch coordinates of current boundary cell
+    int x = (*iter)[0];
+    int y = (*iter)[1];
+    int z = (*iter)[2];
+
+    // Go over all distribution values and stream to inverse distribution
+    // value of adjacent cell in inverse direction (bounce back)
+    for ( int f = 1; f < Dim; ++f ) {
+      (*grid1_)( x - ex[f], y - ey[f], z - ez[f], finv[f] ) = (*grid1_)( x, y, z, f );
+    }
+  }
+    }
 
 template<typename T>
 inline void LBM<T>::treatVelocity() {
