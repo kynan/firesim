@@ -1,0 +1,8 @@
+Domain size           : 120 x 120 x 120
+Number of timesteps   : 100
+Smagorinsky turbulence: yes
+Cell type       |        Total        Fluid Boundary Tot      No-slip Acceleration       Inflow      Outflow     Pressure       Curved    Staircase      Moving
+Number of cells |      1728000      1623808       104192        70568        14400            0            0            0        19224            0
+Runtime [s]     |      172.391      168.478      3.91277      2.34942     0.623979            0            0            0      0.93937            0            0
+Runtime share   |            1     0.977303     0.022697    0.0136284   0.00361955            0            0            0   0.00544906            0            0
+MLUP/s          |      1.00237     0.963808      2.66287      3.00364      2.30777          n/a          n/a          n/a      2.04648          n/a
