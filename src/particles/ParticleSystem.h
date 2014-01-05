@@ -106,12 +106,6 @@ protected:
 
   inline void emitParticles();
 
-  //! Write a povray rendering file for a timestep
-
-  //! \param[in] step Current timestep
-
-  void writePovray( int step );
-
   //! Generate a black body color table
 
   //! \param[in] maxTemp Maximum emitted particle temperature
@@ -197,9 +191,6 @@ protected:
   std::vector< core::aabbox3df > obstacles_;
 
   std::vector< Sphere > spheres_;
-
-  //! Base file name for povray output files
-  std::string povFileName_;
 
   std::string updFileName_;
   std::string irrFileName_;

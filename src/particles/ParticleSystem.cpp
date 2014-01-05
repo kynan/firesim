@@ -136,16 +136,6 @@ void ParticleSystem::setup( ConfBlock& base ) {
 
     }
 
-    // Set up povray output
-    paramBlock = base.find( "povray" );
-    if ( paramBlock != NULL ) {
-      povFileName_ = paramBlock->getParam<std::string>( "povFileName" );
-      std::cout << "Povray output specification:" << std::endl;
-      std::cout << "Povray output file base name : " << povFileName_ << std::endl;
-    } else {
-      std::cout << "No povray block given in configuration file, no output will be created." << std::endl;
-    }
-
     // Set up irrlicht engine
     paramBlock = base.find( "irrlicht" );
     if ( paramBlock == NULL ) {
@@ -450,9 +440,6 @@ void ParticleSystem::run() {
       gettimeofday(&end, NULL);
       float eTime = getTime( start, end );
 
-      // Write povray output if defined
-//      if ( povFileName_.length() > 0 ) writePovray( step );
-
       // Draw all primitives
       drvr_->beginScene(true, true, video::SColor(255,0,0,0));
       smgr_->drawAll();
@@ -532,8 +519,6 @@ void ParticleSystem::run() {
       gettimeofday(&end, NULL);
       float eTime = getTime( start, end );
 
-      // Write povray output if defined
-//      if ( povFileName_.length() > 0 ) writePovray( step );
       // Simulate one LBM step
       float sTime = solver_.runStep();
 
@@ -693,35 +678,6 @@ inline void ParticleSystem::emitParticles() {
       // Reduce emitter's fuel
       (*ite).fuel_ *= (*ite).fuelConsumption_;
       numParticles_++;
-    }
-  }
-}
-
-void ParticleSystem::writePovray( int step ) {
-
-  // Open file for writing
-  std::ostringstream oss;
-  oss << povFileName_ << "." << step << ".pov";
-  std::ofstream povFile( oss.str().c_str(), std::ios::out );
-
-  povFile << "// -w640 -h480 +a0.3\n";
-  povFile << "global_settings { ambient_light rgb<1,1,1> }\n";
-  povFile << "camera {\n";
-  povFile << "  location <" << sizeX_ / 2 << "," << sizeZ_ / 2 << ",-20>\n";
-  povFile << "  look_at <" << sizeX_ / 2 << "," << sizeZ_ / 2 << ",0>\n";
-  povFile << "}\n";
-  povFile << "light_source { <" << sizeX_ / 2 << "," << sizeY_ / 2 << ",-20>, rgb<1,1,1> }\n";
-  std::vector< Emitter >::iterator ite;
-  std::list< Particle >::iterator itp;
-  for ( ite = emitters_.begin(); ite != emitters_.end(); ++ite ) {
-    for ( itp = (*ite).particles_.begin(); itp != (*ite).particles_.end(); ++itp) {
-      Particle p = *itp;
-      povFile << "disc {\n";
-      povFile << "  <" << p.pos_.X << "," << p.pos_.Y << "," << p.pos_.Z << ">, ";
-      povFile << "-z, " << p.lifetime_ / 100. << "\n";
-      if ( p.type_ == FIRE ) povFile << "  texture { pigment { color rgb<1,0,0> } }\n";
-      else povFile << "  texture { pigment { color rgb<.5,.5,.5> } }\n";
-      povFile << "}\n";
     }
   }
 }
