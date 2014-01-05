@@ -163,6 +163,8 @@ void ParticleSystem::setup( ConfBlock& base ) {
       std::string camera = paramBlock->getParam<std::string>( "camera" );
       // Optionally write particle update times to file
       paramBlock->getParam<std::string>( "irrlichtTimeChart", irrFileName_ );
+      paramBlock->getParam<std::string>( "screenshots", screenshots_ );
+      paramBlock->getParam<int>( "screenStep", screenStep_ );
 
       // Create OpenGL device
       device_ = createDevice( video::EDT_OPENGL, core::dimension2du(xRes,yRes), 24 );
@@ -171,25 +173,30 @@ void ParticleSystem::setup( ConfBlock& base ) {
       drvr_ = device_->getVideoDriver();
       assert( smgr_ && drvr_ );
 
+      // Optionally set ambient light
+      int ambLight;
+      if ( paramBlock->getParam<int>( "ambLight", ambLight ) )
+        smgr_->setAmbientLight( video::SColor(255,ambLight,ambLight,ambLight) );
+
       // Add camera to scene
       if ( camera == "animated" ) {
         scene::ICameraSceneNode* cam =
-            smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
-                                 core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
+            smgr_->addCameraSceneNode( 0,
+                                 core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_/2 ),
                                      core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
         cam->addAnimator( smgr_->createFlyCircleAnimator(
                           core::vector3df( sizeX_/2, sizeY_/2, sizeZ_/2 ), // center
-                          1.5 * sizeZ_, // radius
-                          0.0001f, // speed
+                          sizeZ_, // radius
+                          0.0002f, // speed
                           core::vector3df(0.f, 1.f, 0.f) // direction
                                                         ) );
       } else if ( camera == "fps" ) {
         scene::ICameraSceneNode* cam =
             smgr_->addCameraSceneNodeFPS( 0, 100.0f, .1f );
-        cam->setPosition(core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ));
+        cam->setPosition(core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_/2 ));
       } else {
-        smgr_->addCameraSceneNode( smgr_->getRootSceneNode(),
-                                   core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_ ),
+        smgr_->addCameraSceneNode( 0,
+                                   core::vector3df( sizeX_/2, sizeY_/2, -sizeZ_/2 ),
                                        core::vector3df( sizeX_/2, sizeY_/2, 0 ) );
       }
 
@@ -242,9 +249,6 @@ void ParticleSystem::setup( ConfBlock& base ) {
                                            core::vector3df(xRot,yRot,zRot));
         if ( texture.length() ) terrain_node->setMaterialTexture(0, drvr_->getTexture( texture.c_str() ));
         terrain_node->setMaterialFlag(video::EMF_LIGHTING, lighting);
-
-        // Insert it into the scene
-//        terrain_node->setPosition(core::vector3df(xCenter,yCenter,zCenter));
       }
 
       cip = paramBlock->findAll( "mesh" );
@@ -454,6 +458,9 @@ void ParticleSystem::run() {
       smgr_->drawAll();
       drvr_->endScene();
 
+      gettimeofday(&start, NULL);
+      float iTime = getTime( end, start );
+
       // Update the window caption
       core::stringw str = L"LBM fire simulation [";
       str += drvr_->getName();
@@ -467,8 +474,11 @@ void ParticleSystem::run() {
       str += maxSteps_;
       device_->setWindowCaption( str.c_str() );
 
-      gettimeofday(&start, NULL);
-      float iTime = getTime( end, start );
+      if ( screenStep_ > 0 && screenshots_.length() && step % screenStep_ == 0 ) {
+        std::ostringstream oss;
+        oss << screenshots_ << "." << std::setw(4) << std::setfill('0') << step << ".jpg";
+        drvr_->writeImageToFile( drvr_->createScreenShot(), oss.str().c_str(), 85 );
+      }
 
       // Simulate one LBM step
       float sTime = solver_.runStep();

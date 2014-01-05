@@ -204,6 +204,9 @@ protected:
   std::string updFileName_;
   std::string irrFileName_;
 
+  std::string screenshots_;
+  int screenStep_;
+
   bool dynamicLights_;
 };
 
