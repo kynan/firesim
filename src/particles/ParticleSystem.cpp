@@ -165,7 +165,7 @@ void ParticleSystem::setup( ConfBlock& base ) {
       paramBlock->getParam<std::string>( "irrlichtTimeChart", irrFileName_ );
 
       // Create OpenGL device
-      device_ = createDevice( video::EDT_OPENGL, core::dimension2di(xRes,yRes), 24 );
+      device_ = createDevice( video::EDT_OPENGL, core::dimension2du(xRes,yRes), 24 );
       if (!device_) throw "Could not create OpenGL device.";
       smgr_ = device_->getSceneManager();
       drvr_ = device_->getVideoDriver();
