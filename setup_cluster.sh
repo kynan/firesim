@@ -1,16 +1,19 @@
 #!/bin/bash
 
+#module load cmake
+#module load boost
+#module load irrlicht
+#module load gcc-4.2.0
+
 [ -z "$1" ] && echo "usage: $0 <build_type_1> [<build_type_2> ...]" && exit
 
-export PLATFORM=cip
+export PLATFORM=cluster
 
 for arg in $@; do
-  if [ -d cip"$arg" ]; then
-    read -p "Directory $arg already exists. Purge and reinitialize? " && [ "$REPLY" != "yes" ] && continue
-    rm -rf cip"$arg"
-  fi
-  mkdir cip"$arg"
-  cmake -E chdir cip"$arg" cmake -DCMAKE_BUILD_TYPE=$arg -DBOOST_ROOT=/usr/local/boost ..
+  rm -rf cluster"$arg"
+  mkdir cluster"$arg"
+  cmake -E chdir cluster"$arg" cmake -DPLATFORM=cluster -DCMAKE_BUILD_TYPE=$arg -DBOOST_ROOT=/central/boost ..
+#make -C cluster"$arg"
 done
 
 #mkdir Release
