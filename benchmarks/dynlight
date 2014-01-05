@@ -1,0 +1,199 @@
+domain {
+  sizeX 32;
+  sizeY 32;
+  sizeZ 32;
+}
+
+parameters {
+  omega 1.9;
+  cSmagorinsky 0.03;
+  alpha 0.995;
+  beta 1e-6;
+  k 0;
+  g_x 0.0;
+  g_y 1.0;
+  g_z 0.0;
+  smokeTemp 850;
+  ambTemp 295;
+  maxSteps 520;
+}
+
+boundaries {
+  top {
+    outflow {
+      xStart  1;
+      xEnd   30;
+      zStart  1;
+      zEnd   30;
+    }
+  }
+  bottom {
+    inflow {
+      xStart 11;
+      xEnd 20;
+      zStart 11;
+      zEnd 20;
+      u_x 0.0;
+      u_y 0.025;
+      u_z 0.0;
+    }
+  }
+  left {
+    outflow {
+      zStart 2;
+      zEnd 29;
+      yStart 2;
+      yEnd 29;
+    }
+  }
+  right {
+    outflow {
+      zStart 2;
+      zEnd 29;
+      yStart 2;
+      yEnd 29;
+    }
+  }
+  back {
+    outflow {
+      xStart 1;
+      xEnd 30;
+      yStart 2;
+      yEnd 29;
+    }
+  }
+  front {
+    outflow {
+      xStart 1;
+      xEnd 30;
+      yStart 2;
+      yEnd 29;
+    }
+  }
+}
+
+particles {
+  emitter {
+    xStart 13;
+    xEnd 18;
+    yStart 1;
+    yEnd 1;
+    zStart 13;
+    zEnd 18;
+    xRange 4;
+    yRange 1;
+    zRange 4;
+    temp 1900;
+    fuel 1000;
+    emitThreshold 10;
+    fuelConsumption 1;
+    lifetimeCoeff 1;
+  }
+}
+
+irrlicht {
+  xRes 640;
+  yRes 480;
+  sizeBase 3.0;
+  sizeVar  5.0;
+  numSprites  SPRITES;
+  dynamicLights 1;
+  camera static;
+  irrlichtTimeChart results/performance/dynlight_0SPRITES.dat;
+texture {
+    file textures/fire-50_00.png;
+}
+  texture {
+    file textures/fire-50_01.png;
+}
+  texture {
+    file textures/fire-50_02.png;
+}
+  texture {
+    file textures/fire-50_03.png;
+}
+  texture {
+    file textures/fire-50_04.png;
+}
+  texture {
+    file textures/fire-50_05.png;
+}
+  texture {
+    file textures/fire-50_06.png;
+}
+  texture {
+    file textures/fire-50_07.png;
+}
+  texture {
+    file textures/fire-50_08.png;
+}
+  texture {
+    file textures/fire-50_09.png;
+}
+  texture {
+    file textures/fire-50_10.png;
+}
+  texture {
+    file textures/fire-50_11.png;
+}
+  texture {
+    file textures/fire-50_12.png;
+}
+  texture {
+    file textures/fire-50_13.png;
+}
+  texture {
+    file textures/fire-50_14.png;
+}
+  texture {
+    file textures/fire-50_15.png;
+}
+  texture {
+    file textures/fire-50_16.png;
+}
+  texture {
+    file textures/fire-50_17.png;
+}
+  texture {
+    file textures/fire-50_18.png;
+}
+  texture {
+    file textures/fire-50_19.png;
+}
+  texture {
+    file textures/fire-50_20.png;
+}
+  texture {
+    file textures/fire-50_21.png;
+}
+  texture {
+    file textures/fire-50_22.png;
+}
+  texture {
+    file textures/fire-50_23.png;
+}
+  texture {
+    file textures/fire-50_24.png;
+}
+  texture {
+    file textures/fire-50_25.png;
+}
+  texture {
+    file textures/fire-50_26.png;
+}
+  texture {
+    file textures/fire-50_27.png;
+}
+  texture {
+    file textures/fire-50_28.png;
+}
+  texture {
+    file textures/fire-50_29.png;
+}
+  texture {
+    file textures/fire-50_30.png;
+}
+  texture {
+    file textures/fire-50_31.png;
+}
+}

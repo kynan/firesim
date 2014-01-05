@@ -1,0 +1,38 @@
+domain {
+  sizeX 122;
+  sizeY 122;
+  sizeZ 122;
+}
+
+parameters {
+  omega 1.9;
+  cSmagorinsky 0.03;
+  maxSteps 100;
+}
+
+profiling {
+  fileName results/performance/ldc_120;
+}
+
+boundaries {
+  top {
+    velocity {
+      xStart  1;
+      xEnd   120;
+      zStart  1;
+      zEnd   120;
+      u_x 0.08;
+      u_y 0.0;
+      u_z 0.0;
+    }
+  }
+}
+
+obstacles {
+  sphere_staircase {
+    xCenter 61.0;
+    yCenter 61.0;
+    zCenter 61.0;
+    radius RADIUS;
+  }
+}

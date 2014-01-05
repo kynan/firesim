@@ -1,0 +1,29 @@
+domain {
+  sizeX SIZE2;
+  sizeY SIZE2;
+  sizeZ SIZE2;
+}
+
+parameters {
+  omega 1.9;
+  cSmagorinsky 0.03;
+  maxSteps 100;
+}
+
+profiling {
+  fileName results/performance/ldc_SIZE0;
+}
+
+boundaries {
+  top {
+    velocity {
+      xStart  1;
+      xEnd   SIZE0;
+      zStart  1;
+      zEnd   SIZE0;
+      u_x 0.08;
+      u_y 0.0;
+      u_z 0.0;
+    }
+  }
+}
