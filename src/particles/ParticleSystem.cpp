@@ -571,10 +571,7 @@ inline void ParticleSystem::updateParticles() {
               (*itp).getPos().Y < 1 || (*itp).getPos().Y > sizeY_ - 1 ||
               (*itp).getPos().Z < 1 || (*itp).getPos().Z > sizeZ_ -1  ||
               (*itp).temp_ < ambTemp_ ) ) {
-        // DEBUG output
-//          std::cout << "Removing particle " << (*itp).sprites_[0]->getID();
-//          std::cout << " at position <" << (*itp).getPos().X << "," << (*itp).getPos().Y << "," << (*itp).getPos().Z << ">";
-//          std::cout << " with lifetime " << (*itp).lifetime_ << ", Remaining: " << (*ite).particles_.size() << std::endl;
+//         std::cout << "Particle at pos <" << (*itp).getPos().X << "," << (*itp).getPos().Y << "," << (*itp).getPos().Z <<"> with lifetime " << (*itp).lifetime_ << " removed." << std::endl;
         (*itp).clear();
         itp = (*ite).particles_.erase( itp );
         numParticles_--;
@@ -606,48 +603,40 @@ inline void ParticleSystem::updateParticles() {
         }
       // If not, apply it
       if ( !inObstacle ) (*itp).updatePos( v + g );
+      // If yes, only move it by the fluid velocity
       else (*itp).updatePos( v );
 
       // Update lifetime and particle size
       float sz = sizeBase_ + sizeVar_ * (*itp).lifetime_ * szCoeff;
       (*itp).setSize( sz );
-      if ( (*itp).type_ == FIRE ) {
+
       // Update temperature
-        float tempExt = - gaussTable_[0] * (*itp).temp_;
+      float tempExt = - gaussTable_[0] * (*itp).temp_;
       // Add up temperature contributions of all other particles weighted by distance
-        for ( ite2 = emitters_.begin(); ite2 != emitters_.end(); ++ite2 ) {
-          for ( itp2 = (*ite2).particles_.begin(); itp2 != (*ite2).particles_.end(); ++itp2) {
-            tempExt += gaussTable_[ (int) (*itp).dist( *itp2 ) ] * (*itp2).temp_;
-          }
+      for ( ite2 = emitters_.begin(); ite2 != emitters_.end(); ++ite2 ) {
+        for ( itp2 = (*ite2).particles_.begin(); itp2 != (*ite2).particles_.end(); ++itp2) {
+          tempExt += gaussTable_[ (int) (*itp).dist( *itp2 ) ] * (*itp2).temp_;
         }
-        (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
-      // DEBUG output
-//          std::cout << "Temperature of particle " << (*itp).sprite_->getID() << ": ";
-//          std::cout << (*itp).temp_ << ", table entry " << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
+      }
+      (*itp).temp_ = alpha_ * (*itp).temp_ + beta_ * tempExt;
+
+      if ( (*itp).type_ == FIRE ) {
 
         // If temperature has fallen below threshold, convert to smoke particle
         if ( (*itp).temp_ < smokeTemp_ ) {
           (*itp).setSmoke( szCoeff );
         } else if ( device_ ) {
           assert( (uint) (((*itp).temp_ - smokeTemp_) / 50.) < bbColorTable_.size() );
-          if ( (uint) (((*itp).temp_ - smokeTemp_) / 50.) < bbColorTable_.size() ) {
-            (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
-          } else {
-            std::cout << "Temperature too high: " << (*itp).temp_ << ", index:" << (int) (((*itp).temp_ - smokeTemp_) / 50.) << std::endl;
-          }
+          (*itp).setColor( bbColorTable_[ (int) (((*itp).temp_ - smokeTemp_) / 50.) ] );
         }
-//           std::cout << "Particle with lifetime " << (*itp).lifetime_ << " turns to smoke." << std::endl;
+
       } else if ( device_ ){
         (*itp).setColor( video::SColor( 255 * (*itp).lifetime_ * szCoeff,
                                         255 * (*itp).lifetime_ * szCoeff,
                                         255 * (*itp).lifetime_ * szCoeff,
                                         255 * (*itp).lifetime_ * szCoeff) );
       }
-//      array<scene::ISceneNode*> lightarray;
-//      smgr_->getSceneNodesFromType(scene::ESNT_LIGHT, lightarray);
-//      for (u32 i = 0; i  < lightarray.size(); i++) {
-//        lightarray[i]->remove();
-//      }
+
       (*itp).lifetime_--;
     }
   }
@@ -664,13 +653,13 @@ inline void ParticleSystem::emitParticles() {
   std::vector< Emitter >::iterator ite;
   for ( ite = emitters_.begin(); ite != emitters_.end(); ++ite ) {
     // Emit random number of particles up to emit threshold
-    for ( int i = std::rand() % (*ite).emitThreshold_ ; i > 0; --i ) {
+    for ( int i = 0; i < (*ite).emitThreshold_; ++i ) {
       core::vector3df pos = (*ite).pos_ + core::vector3df(
           ( std::rand() * (*ite).size_.X ) / (float) RAND_MAX,
           ( std::rand() * (*ite).size_.Y ) / (float) RAND_MAX,
           ( std::rand() * (*ite).size_.Z ) / (float) RAND_MAX
                                                          );
-//       std::cout << "Emit particle " << i << " at position <" << pos.X << "," << pos.Y << "," << pos.Z << ">" << std::endl;
+      // If OpenGL output is enabled, also create billboards
       if ( device_ )
         (*ite).particles_.push_back(
             Particle(
@@ -685,6 +674,7 @@ inline void ParticleSystem::emitParticles() {
                       (int) ((*ite).fuel_ * (*ite).lifetimeCoeff_ ),
                       dynamicLights_
                     )              );
+      // Else create only particles without visual representation
       else
         (*ite).particles_.push_back(
             Particle( pos, (*ite).temp_, (int) ((*ite).fuel_ * (*ite).lifetimeCoeff_ ) ) );
